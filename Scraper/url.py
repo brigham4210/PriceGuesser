@@ -40,4 +40,3 @@ class Url:
             raise ValueError("State must be provided to generate URL.")
 
         return f"https://www.realtor.com/realestateandhomes-search/{self.state}" + self.the_property_type() + self.beds() + self.baths()
-
