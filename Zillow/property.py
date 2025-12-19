@@ -3,7 +3,6 @@ from random import choice
 from bs4 import BeautifulSoup
 
 from Zillow import SESSION, HEADERS, close_session
-from Zillow.url import TEST_URL
 
 
 class Property:
@@ -31,8 +30,3 @@ class Property:
 
     def __str__(self):
         return choice(self.get_property_urls())
-
-
-# Example usage:
-if __name__ == "__main__":
-    print(Property(TEST_URL))

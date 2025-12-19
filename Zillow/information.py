@@ -42,13 +42,3 @@ class Information:
     def get_price(self):
         info = self.get_info()
         return info[1]
-
-
-if __name__ == "__main__":
-    # Get a concrete property URL string to avoid triggering Property.__str__ implicitly
-    test_info = Information(
-        Property(Url(state="in", bed_min=10, bed_max=None, bath_min=None, bath_max=None)).get_random_property_url())
-    print(test_info)
-    print("Image URLs:")
-
-    print(test_info.get_image_urls())
