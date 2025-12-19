@@ -1,4 +1,4 @@
-from random import random, choice
+from random import choice
 
 import requests
 from bs4 import BeautifulSoup
@@ -10,17 +10,18 @@ class Properties:
     def __init__(self, website_url):
         self.url = website_url
         self.session = requests.Session()
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 Chrome/120.0.0.0",
+            "Accept-Language": "en",
+            "Accept": "text/html",
+        }
 
     def close_session(self):
         self.session.close()
 
     def property_urls(self):
-        headers = {
-            "User-Agent": "Mozilla/5.0 Chrome/120.0.0.0",
-            "Accept-Language": "en",
-            "Accept": "text/html",
-        }
-        response = self.session.get(self.url, headers=headers)
+
+        response = self.session.get(self.url, headers=self.headers)
         soup = BeautifulSoup(response.text, 'html.parser')
         property_urls = []
         self.close_session()
