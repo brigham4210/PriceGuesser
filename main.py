@@ -21,7 +21,7 @@ def generate():
     bed_max = request.form.get('bed_max', type=int)
     bath_min = request.form.get('bath_min', type=int)
     bath_max = request.form.get('bath_max', type=int)
-    
+
     # Store search criteria in session
     session['search_criteria'] = {
         'state': state,
@@ -30,17 +30,17 @@ def generate():
         'bath_min': bath_min,
         'bath_max': bath_max
     }
-    
+
     # Create URL and get random property
-    url = Url(state=state, bed_min=bed_min, bed_max=bed_max, 
+    url = Url(state=state, bed_min=bed_min, bed_max=bed_max,
               bath_min=bath_min, bath_max=bath_max)
     property_obj = Property(url)
     property_url = property_obj.get_random_property_url()
-    
+
     # Get property information
     info = Information(property_url)
     address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
-    
+
     # Store in session
     session['property_url'] = property_url
     session['address'] = address
@@ -52,7 +52,7 @@ def generate():
     session['year_built'] = year_built
     session['image_urls'] = image_urls
     session['guessed'] = False
-    
+
     return redirect(url_for('game'))
 
 
@@ -60,7 +60,7 @@ def generate():
 def game():
     if 'address' not in session:
         return redirect(url_for('index'))
-    
+
     # Calculate difference if guessed
     difference = None
     if session.get('guessed'):
@@ -68,29 +68,29 @@ def game():
             # Extract numeric value from user guess
             user_guess_str = session.get('user_guess', '').replace('$', '').replace(',', '').strip()
             user_guess_num = float(user_guess_str)
-            
+
             # Extract numeric value from actual price
             actual_price_str = session.get('price', '').replace('$', '').replace(',', '').strip()
             actual_price_num = float(actual_price_str)
-            
+
             # Calculate difference
             difference = user_guess_num - actual_price_num
         except (ValueError, AttributeError):
             difference = None
-    
+
     return render_template('game.html',
-                         address=session.get('address'),
-                         beds=session.get('beds'),
-                         baths=session.get('baths'),
-                         sqft=session.get('sqft'),
-                         land_area=session.get('land_area'),
-                         year_built=session.get('year_built'),
-                         image_urls=session.get('image_urls'),
-                         guessed=session.get('guessed', False),
-                         price=session.get('price') if session.get('guessed') else None,
-                         user_guess=session.get('user_guess'),
-                         property_url=session.get('property_url'),
-                         difference=difference)
+                           address=session.get('address'),
+                           beds=session.get('beds'),
+                           baths=session.get('baths'),
+                           sqft=session.get('sqft'),
+                           land_area=session.get('land_area'),
+                           year_built=session.get('year_built'),
+                           image_urls=session.get('image_urls'),
+                           guessed=session.get('guessed', False),
+                           price=session.get('price') if session.get('guessed') else None,
+                           user_guess=session.get('user_guess'),
+                           property_url=session.get('property_url'),
+                           difference=difference)
 
 
 @app.route('/guess', methods=['POST'])
@@ -106,20 +106,20 @@ def generate_again():
     # Use stored search criteria to get another property
     if 'search_criteria' not in session:
         return redirect(url_for('index'))
-    
+
     criteria = session['search_criteria']
-    url = Url(state=criteria['state'], 
-              bed_min=criteria['bed_min'], 
+    url = Url(state=criteria['state'],
+              bed_min=criteria['bed_min'],
               bed_max=criteria['bed_max'],
-              bath_min=criteria['bath_min'], 
+              bath_min=criteria['bath_min'],
               bath_max=criteria['bath_max'])
     property_obj = Property(url)
     property_url = property_obj.get_random_property_url()
-    
+
     # Get property information
     info = Information(property_url)
     address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
-    
+
     # Update session with new property
     session['property_url'] = property_url
     session['address'] = address
@@ -132,7 +132,7 @@ def generate_again():
     session['image_urls'] = image_urls
     session['guessed'] = False
     session.pop('user_guess', None)
-    
+
     return redirect(url_for('game'))
 
 
@@ -143,4 +143,4 @@ def reset():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
