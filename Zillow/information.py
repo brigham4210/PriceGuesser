@@ -10,12 +10,14 @@ class Information:
         # Coerce to string once to avoid repeated __str__ calls on objects like Property
         self.url = str(url)
 
-    def get_info(self):
-        print(f"Fetching information from {self.url}")
-
+    def get_soup(self):
         response = SESSION.get(self.url, headers=HEADERS)
         soup = BeautifulSoup(response.text, 'html.parser')
         close_session()
+        return soup
+
+    def get_info(self):
+        soup = self.get_soup()
 
         price = soup.find('span', {'data-testid': 'price'}).text
         address = soup.find('h1').text
@@ -27,7 +29,15 @@ class Information:
         year_built = others[1].text
         land_area = others[2].text
 
+        images = soup.find('ul', {'aria-label': 'media wall images'}).find_all('img')
+
         return f"Address: {address}\nPrice: {price}\n{beds} {baths} {sqft} {land_area}\n{year_built}"
+
+    def get_images(self):
+        soup = self.get_soup()
+        images = soup.find('ul', {'aria-label': 'media wall images'})
+        # TODO : Implement image extraction logic
+        return None
 
     def __str__(self):
         return self.get_info()
