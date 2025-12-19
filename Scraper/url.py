@@ -26,8 +26,10 @@ class Url:
         return f"https://www.zillow.com/{self.state.lower()}/?searchQueryState={quote(self.json())}"
 
 
+TEST_URL = Url(state="in", bed_min=10, bed_max=None, bath_min=None, bath_max=None)
+
+
 # Example usage:
 if __name__ == "__main__":
-    test_url = Url(state="in", bed_min=10, bed_max=None, bath_min=None, bath_max=None)
-    print(test_url.json())
-    print(test_url)
+    print(TEST_URL.json())
+    print(TEST_URL)
