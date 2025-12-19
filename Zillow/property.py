@@ -8,9 +8,10 @@ from Zillow.url import TEST_URL
 
 class Property:
     def __init__(self, website_url):
-        self.url = website_url
+        self.url = str(website_url)
 
     def get_property_urls(self):
+        print(f"Fetching Website URLs from {self.url}")
         response = SESSION.get(self.url, headers=HEADERS)
         soup = BeautifulSoup(response.text, 'html.parser')
         property_urls = []
@@ -24,12 +25,14 @@ class Property:
 
         return property_urls
 
+    def get_random_property_url(self):
+        # Return one random property URL without relying on __str__ side effects
+        return choice(self.get_property_urls())
+
     def __str__(self):
         return choice(self.get_property_urls())
 
 
-TEST_PROPERTY_URL = Property(TEST_URL)
-
 # Example usage:
 if __name__ == "__main__":
-    print(TEST_PROPERTY_URL)
+    print(Property(TEST_URL))
