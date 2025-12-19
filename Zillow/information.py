@@ -19,9 +19,15 @@ class Information:
 
         price = soup.find('span', {'data-testid': 'price'}).text
         address = soup.find('h1').text
-        facts = soup.find('div', {'data-testid': 'bed-bath-sqft-facts'}).text
+        facts = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
+        beds = facts[0].text
+        baths = facts[1].text
+        sqft = facts[2].text
+        others = soup.find('div', {'aria-label': "At a glance facts"}).find_all('span')
+        year_built = others[1].text
+        land_area = others[2].text
 
-        return f"Address: {address}\nPrice: {price}\nFacts: {facts}"
+        return f"Address: {address}\nPrice: {price}\nBeds: {beds} Baths: {baths}\nSquare Feet: {sqft}\n{year_built}\nland area: {land_area}"
 
     def __str__(self):
         return self.get_info()
