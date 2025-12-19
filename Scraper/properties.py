@@ -1,3 +1,5 @@
+from random import random, choice
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -9,6 +11,9 @@ class Properties:
         self.url = website_url
         self.session = requests.Session()
 
+    def close_session(self):
+        self.session.close()
+
     def property_urls(self):
         headers = {
             "User-Agent": "Mozilla/5.0 Chrome/120.0.0.0",
@@ -18,6 +23,7 @@ class Properties:
         response = self.session.get(self.url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
         property_urls = []
+        self.close_session()
 
         if soup.find('title').text != "Access to this page has been denied":
             print("Access granted, scraping property URLs...")
@@ -27,9 +33,10 @@ class Properties:
 
         return property_urls
 
+    def __str__(self):
+        return choice(self.property_urls())
 
+
+# Example usage:
 if __name__ == "__main__":
-    properties = Properties(TEST_URL)
-    urls = properties.property_urls()
-    for url in urls:
-        print(url)
+    print(Properties(TEST_URL))
