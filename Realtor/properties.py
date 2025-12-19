@@ -3,7 +3,7 @@ from random import random, choice
 import requests
 from bs4 import BeautifulSoup
 
-from Scraper.url import TEST_URL
+from Zillow.url import TEST_URL
 
 
 class Properties:
