@@ -26,12 +26,13 @@ class Information:
         year_built = others[1].text
         land_area = others[2].text
 
-        images = soup.find('button', {'data-testid':"gallery-see-all-photos-button"}).text.split(" ")[3]
+        images = soup.find('button', {'data-testid': "gallery-see-all-photos-button"}).text
 
-        return f"Address: {address}\nPrice: {price}\n{beds} {baths} {sqft} {land_area}\n{year_built} \n{images}"
+        return address, price, beds, baths, sqft, land_area, year_built, images
 
     def __str__(self):
-        return self.get_info()
+        info = self.get_info()
+        return f"Address: {info[0]}\nPrice: {info[1]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]} \n{info[7]}"
 
 
 if __name__ == "__main__":
