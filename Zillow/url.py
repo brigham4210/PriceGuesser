@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 class Url:
     def __init__(self, state: str, bed_min: int, bed_max: int, bath_min: int, bath_max: int):
-        self.state = state.lower()
+        self.state = state.lower().replace(',', '').replace(" ", "-")
         self.bed_min = bed_min
         self.bed_max = bed_max
         self.bath_min = bath_min
