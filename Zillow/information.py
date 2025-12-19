@@ -27,7 +27,7 @@ class Information:
         year_built = others[1].text
         land_area = others[2].text
 
-        return f"Address: {address}\nPrice: {price}\nBeds: {beds} Baths: {baths}\nSquare Feet: {sqft}\n{year_built}\nland area: {land_area}"
+        return f"Address: {address}\nPrice: {price}\n{beds} {baths} {sqft} {land_area}\n{year_built}"
 
     def __str__(self):
         return self.get_info()
