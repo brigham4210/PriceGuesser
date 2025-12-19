@@ -116,14 +116,23 @@
             font-size: 18px;
             color: #666;
         }
-        .reset-btn {
-            background-color: #28a745;
+        .reset-btn, .again-btn {
             display: inline-block;
             text-decoration: none;
             color: white;
             padding: 12px 30px;
             border-radius: 4px;
             margin-top: 15px;
+            margin-right: 10px;
+        }
+        .again-btn {
+            background-color: #006AFF;
+        }
+        .again-btn:hover {
+            background-color: #0056CC;
+        }
+        .reset-btn {
+            background-color: #28a745;
         }
         .reset-btn:hover {
             background-color: #218838;
@@ -181,7 +190,8 @@
             <h2>Results</h2>
             <p><strong>Your Guess:</strong> {{ user_guess }}</p>
             <div class="price">Actual Price: {{ price }}</div>
-            <a href="/reset" class="reset-btn">Try Another Property</a>
+            <a href="/generate_again" class="again-btn">Try Another Property (Same Criteria)</a>
+            <a href="/reset" class="reset-btn">New Search</a>
         </div>
         {% endif %}
     </div>

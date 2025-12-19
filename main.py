@@ -22,6 +22,15 @@ def generate():
     bath_min = request.form.get('bath_min', type=int)
     bath_max = request.form.get('bath_max', type=int)
     
+    # Store search criteria in session
+    session['search_criteria'] = {
+        'state': state,
+        'bed_min': bed_min,
+        'bed_max': bed_max,
+        'bath_min': bath_min,
+        'bath_max': bath_max
+    }
+    
     # Create URL and get random property
     url = Url(state=state, bed_min=bed_min, bed_max=bed_max, 
               bath_min=bath_min, bath_max=bath_max)
@@ -69,6 +78,40 @@ def guess():
     user_guess = request.form.get('guess')
     session['user_guess'] = user_guess
     session['guessed'] = True
+    return redirect(url_for('game'))
+
+
+@app.route('/generate_again')
+def generate_again():
+    # Use stored search criteria to get another property
+    if 'search_criteria' not in session:
+        return redirect(url_for('index'))
+    
+    criteria = session['search_criteria']
+    url = Url(state=criteria['state'], 
+              bed_min=criteria['bed_min'], 
+              bed_max=criteria['bed_max'],
+              bath_min=criteria['bath_min'], 
+              bath_max=criteria['bath_max'])
+    property_obj = Property(url)
+    property_url = property_obj.get_random_property_url()
+    
+    # Get property information
+    info = Information(property_url)
+    address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
+    
+    # Update session with new property
+    session['address'] = address
+    session['price'] = price
+    session['beds'] = beds
+    session['baths'] = baths
+    session['sqft'] = sqft
+    session['land_area'] = land_area
+    session['year_built'] = year_built
+    session['image_urls'] = image_urls
+    session['guessed'] = False
+    session.pop('user_guess', None)
+    
     return redirect(url_for('game'))
 
 
