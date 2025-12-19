@@ -42,6 +42,7 @@ def generate():
     address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
     
     # Store in session
+    session['property_url'] = property_url
     session['address'] = address
     session['price'] = price
     session['beds'] = beds
@@ -70,7 +71,8 @@ def game():
                          image_urls=session.get('image_urls'),
                          guessed=session.get('guessed', False),
                          price=session.get('price') if session.get('guessed') else None,
-                         user_guess=session.get('user_guess'))
+                         user_guess=session.get('user_guess'),
+                         property_url=session.get('property_url'))
 
 
 @app.route('/guess', methods=['POST'])
@@ -101,6 +103,7 @@ def generate_again():
     address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
     
     # Update session with new property
+    session['property_url'] = property_url
     session['address'] = address
     session['price'] = price
     session['beds'] = beds

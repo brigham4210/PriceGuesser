@@ -194,6 +194,12 @@
             <a href="/reset" class="reset-btn">New Search</a>
         </div>
         {% endif %}
+        
+        {% if guessed %}
+        <div style="margin-top: 30px; padding: 15px; background-color: #f0f0f0; border-radius: 5px; font-size: 14px; color: #666; word-break: break-all;">
+            <strong>Full information:</strong> <a href="{{ property_url }}" target="_blank" style="color: #006AFF;">{{ property_url }}</a>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>
