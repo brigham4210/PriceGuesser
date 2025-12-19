@@ -14,7 +14,12 @@ class Url:
         data = {
             "filterState": {
                 "beds": {"min": self.bed_min, "max": self.bed_max},
-                "baths": {"min": self.bath_min, "max": self.bath_max}
+                "baths": {"min": self.bath_min, "max": self.bath_max},
+                "mf": {"value": False},
+                "con": {"value": False},
+                "apa": {"value": False},
+                "apco": {"value": False},
+                "land": {"value": False}
             }
         }
         return json.dumps(data)

@@ -181,7 +181,7 @@
         <div class="guess-section">
             <h2>What's your guess?</h2>
             <form action="/guess" method="POST">
-                <input type="text" name="guess" placeholder="$500,000" required>
+                <input type="text" id="guessInput" name="guess" placeholder="$500,000" required>
                 <button type="submit">Submit Guess</button>
             </form>
         </div>
@@ -212,5 +212,37 @@
         </div>
         {% endif %}
     </div>
+    
+    <script>
+        // Format number with commas while typing
+        const guessInput = document.getElementById('guessInput');
+        if (guessInput) {
+            guessInput.addEventListener('input', function(e) {
+                let value = e.target.value;
+                
+                // Remove all non-digit characters
+                let numbers = value.replace(/\D/g, '');
+                
+                // Format with commas
+                if (numbers) {
+                    let formatted = parseInt(numbers).toLocaleString('en-US');
+                    e.target.value = '$' + formatted;
+                } else {
+                    e.target.value = '';
+                }
+            });
+            
+            // Handle backspace/delete to ensure smooth editing
+            guessInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    let value = e.target.value;
+                    if (value === '$') {
+                        e.target.value = '';
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
