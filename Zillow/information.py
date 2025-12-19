@@ -26,13 +26,22 @@ class Information:
         year_built = others[1].text
         land_area = others[2].text
 
-        images = soup.find('button', {'data-testid': "gallery-see-all-photos-button"}).text
+        images = soup.find('div', {'data-testid': "hollywood-gallery-images-tile-list"}).find_all('img')
+        image_urls = [image['src'] for image in images]
 
-        return address, price, beds, baths, sqft, land_area, year_built, images
+        return address, price, beds, baths, sqft, land_area, year_built, image_urls
 
     def __str__(self):
         info = self.get_info()
-        return f"Address: {info[0]}\nPrice: {info[1]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]} \n{info[7]}"
+        return f"Address: {info[0]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]}}}"
+
+    def get_image_urls(self):
+        info = self.get_info()
+        return info[7]
+
+    def get_price(self):
+        info = self.get_info()
+        return info[1]
 
 
 if __name__ == "__main__":
@@ -40,3 +49,6 @@ if __name__ == "__main__":
     test_info = Information(
         Property(Url(state="in", bed_min=10, bed_max=None, bath_min=None, bath_max=None)).get_random_property_url())
     print(test_info)
+    print("Image URLs:")
+
+    print(test_info.get_image_urls())
