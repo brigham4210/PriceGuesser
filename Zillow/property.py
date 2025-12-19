@@ -1,30 +1,20 @@
 from random import choice
 
-import requests
 from bs4 import BeautifulSoup
 
+from Zillow import SESSION, HEADERS, close_session
 from Zillow.url import TEST_URL
 
 
-class Properties:
+class Property:
     def __init__(self, website_url):
         self.url = website_url
-        self.session = requests.Session()
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 Chrome/120.0.0.0",
-            "Accept-Language": "en",
-            "Accept": "text/html",
-        }
-
-    def close_session(self):
-        self.session.close()
 
     def property_urls(self):
-
-        response = self.session.get(self.url, headers=self.headers)
+        response = SESSION.get(self.url, headers=HEADERS)
         soup = BeautifulSoup(response.text, 'html.parser')
         property_urls = []
-        self.close_session()
+        close_session()
 
         if soup.find('title').text != "Access to this page has been denied":
             print("Access granted, scraping property URLs...")
@@ -38,6 +28,8 @@ class Properties:
         return choice(self.property_urls())
 
 
+TEST_PROPERTY_URL = Property(TEST_URL)
+
 # Example usage:
 if __name__ == "__main__":
-    print(Properties(TEST_URL))
+    print(TEST_PROPERTY_URL)
