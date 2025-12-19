@@ -61,6 +61,23 @@ def game():
     if 'address' not in session:
         return redirect(url_for('index'))
     
+    # Calculate difference if guessed
+    difference = None
+    if session.get('guessed'):
+        try:
+            # Extract numeric value from user guess
+            user_guess_str = session.get('user_guess', '').replace('$', '').replace(',', '').strip()
+            user_guess_num = float(user_guess_str)
+            
+            # Extract numeric value from actual price
+            actual_price_str = session.get('price', '').replace('$', '').replace(',', '').strip()
+            actual_price_num = float(actual_price_str)
+            
+            # Calculate difference
+            difference = user_guess_num - actual_price_num
+        except (ValueError, AttributeError):
+            difference = None
+    
     return render_template('game.html',
                          address=session.get('address'),
                          beds=session.get('beds'),
@@ -72,7 +89,8 @@ def game():
                          guessed=session.get('guessed', False),
                          price=session.get('price') if session.get('guessed') else None,
                          user_guess=session.get('user_guess'),
-                         property_url=session.get('property_url'))
+                         property_url=session.get('property_url'),
+                         difference=difference)
 
 
 @app.route('/guess', methods=['POST'])

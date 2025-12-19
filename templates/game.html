@@ -190,6 +190,17 @@
             <h2>Results</h2>
             <p><strong>Your Guess:</strong> {{ user_guess }}</p>
             <div class="price">Actual Price: {{ price }}</div>
+            {% if difference is not none %}
+            <div class="difference">
+                {% if difference > 0 %}
+                You guessed <strong style="color: #dc3545;">${{ "{:,.0f}".format(difference) }}</strong> too high
+                {% elif difference < 0 %}
+                You guessed <strong style="color: #007bff;">${{ "{:,.0f}".format(-difference) }}</strong> too low
+                {% else %}
+                <strong style="color: #28a745;">Perfect guess! 🎯</strong>
+                {% endif %}
+            </div>
+            {% endif %}
             <a href="/generate_again" class="again-btn">Try Another Property (Same Criteria)</a>
             <a href="/reset" class="reset-btn">New Search</a>
         </div>
