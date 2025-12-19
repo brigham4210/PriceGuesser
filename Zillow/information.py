@@ -29,15 +29,13 @@ class Information:
         year_built = others[1].text
         land_area = others[2].text
 
-        images = soup.find('ul', {'aria-label': 'media wall images'}).find_all('img')
-
         return f"Address: {address}\nPrice: {price}\n{beds} {baths} {sqft} {land_area}\n{year_built}"
 
     def get_images(self):
         soup = self.get_soup()
-        images = soup.find('ul', {'aria-label': 'media wall images'})
-        # TODO : Implement image extraction logic
-        return None
+        images = soup.find('ul', {'aria-label': 'media wall images'}).find_all('img')
+
+        return images
 
     def __str__(self):
         return self.get_info()
@@ -47,3 +45,4 @@ if __name__ == "__main__":
     # Get a concrete property URL string to avoid triggering Property.__str__ implicitly
     test_info = Information(Property(Url(state="in", bed_min=10, bed_max=None, bath_min=None, bath_max=None)).get_random_property_url())
     print(test_info)
+    print(test_info.get_images())
