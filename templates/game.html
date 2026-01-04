@@ -95,6 +95,22 @@
         button:hover {
             background-color: #0056CC;
         }
+        .copy-prompt-btn {
+            display: block;
+            width: fit-content;
+            margin: 20px auto;
+            background-color: #28a745;
+        }
+        .copy-prompt-btn:hover {
+            background-color: #218838;
+        }
+        .copy-feedback {
+            display: none;
+            text-align: center;
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 10px;
+        }
         .result {
             margin-top: 20px;
             padding: 20px;
@@ -171,6 +187,9 @@
             </div>
         </div>
         
+        <button class="copy-prompt-btn" onclick="copyPrompt()">📋 Copy Prompt</button>
+        <div class="copy-feedback" id="copyFeedback">✓ Copied to clipboard!</div>
+        
         <div class="images">
             {% for img_url in image_urls[:6] %}
             <img src="{{ img_url }}" alt="Property image">
@@ -214,6 +233,29 @@
     </div>
     
     <script>
+        // Copy prompt function
+        function copyPrompt() {
+            const location = "{{ address }}".replace(/^\d+\s+/, '').trim(); // Remove street number
+            const prompt = `Guess the price of this house:
+Location: ${location}
+Bedrooms: {{ beds }}
+Bathrooms: {{ baths }}
+Square Feet: {{ sqft }}
+Land Area: {{ land_area }}
+Year Built: {{ year_built }}`;
+            
+            navigator.clipboard.writeText(prompt).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.style.display = 'block';
+                setTimeout(() => {
+                    feedback.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+        
         // Format number with commas while typing
         const guessInput = document.getElementById('guessInput');
         if (guessInput) {
