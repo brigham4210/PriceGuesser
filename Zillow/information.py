@@ -16,18 +16,41 @@ class Information:
         soup = BeautifulSoup(response.text, 'html.parser')
         close_session()
 
-        price = soup.find('span', {'data-testid': 'price'}).text
-        address = soup.find('h1').text
-        facts = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
-        beds = facts[0].text
-        baths = facts[1].text
-        sqft = facts[2].text
-        others = soup.find('div', {'aria-label': "At a glance facts"}).find_all('span')
-        year_built = others[1].text
-        land_area = others[2].text
+        # Add error handling for each element
+        try:
+            price_elem = soup.find('span', {'data-testid': 'price'})
+            price = price_elem.text if price_elem else 'Price not available'
+        except AttributeError:
+            price = 'Price not available'
 
-        images = soup.find('div', {'data-testid': "hollywood-gallery-images-tile-list"}).find_all('img')
-        image_urls = [image['src'] for image in images]
+        try:
+            address_elem = soup.find('h1')
+            address = address_elem.text if address_elem else 'Address not available'
+        except AttributeError:
+            address = 'Address not available'
+
+        try:
+            facts = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
+            beds = facts[0].text if len(facts) > 0 else 'N/A'
+            baths = facts[1].text if len(facts) > 1 else 'N/A'
+            sqft = facts[2].text if len(facts) > 2 else 'N/A'
+        except (AttributeError, IndexError):
+            beds, baths, sqft = 'N/A', 'N/A', 'N/A'
+
+        try:
+            others_container = soup.find('div', {'aria-label': "At a glance facts"})
+            others = others_container.find_all('span') if others_container else []
+            year_built = others[1].text if len(others) > 1 else 'N/A'
+            land_area = others[2].text if len(others) > 2 else 'N/A'
+        except (AttributeError, IndexError):
+            year_built, land_area = 'N/A', 'N/A'
+
+        try:
+            images_container = soup.find('div', {'data-testid': "hollywood-gallery-images-tile-list"})
+            images = images_container.find_all('img') if images_container else []
+            image_urls = [image['src'] for image in images if image.get('src')]
+        except AttributeError:
+            image_urls = []
 
         return address, price, beds, baths, sqft, land_area, year_built, image_urls
 
