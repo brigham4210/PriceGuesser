@@ -111,6 +111,45 @@
             font-size: 14px;
             margin-top: 10px;
         }
+        .full-info-container {
+            margin-top: 30px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .full-info-toggle {
+            width: 100%;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        .full-info-toggle:hover {
+            background-color: #e5e5e5;
+        }
+        .full-info-content {
+            display: none;
+            padding: 15px;
+            font-size: 14px;
+            color: #666;
+            word-break: break-all;
+        }
+        .full-info-content.show {
+            display: block;
+        }
+        .toggle-icon {
+            transition: transform 0.3s;
+        }
+        .toggle-icon.rotate {
+            transform: rotate(180deg);
+        }
         .result {
             margin-top: 20px;
             padding: 20px;
@@ -226,16 +265,41 @@
         {% endif %}
         
         {% if guessed %}
-        <div style="margin-top: 30px; padding: 15px; background-color: #f0f0f0; border-radius: 5px; font-size: 14px; color: #666; word-break: break-all;">
-            <strong>Full information:</strong> <a href="{{ property_url }}" target="_blank" style="color: #006AFF;">{{ property_url }}</a>
+        <div class="full-info-container">
+            <button class="full-info-toggle" onclick="toggleFullInfo()">
+                <span>Full Information</span>
+                <span class="toggle-icon" id="toggleIcon">▼</span>
+            </button>
+            <div class="full-info-content" id="fullInfoContent">
+                <a href="{{ property_url }}" target="_blank" style="color: #006AFF;">{{ property_url }}</a>
+            </div>
         </div>
         {% endif %}
     </div>
     
     <script>
+        // Toggle full info section
+        function toggleFullInfo() {
+            const content = document.getElementById('fullInfoContent');
+            const icon = document.getElementById('toggleIcon');
+            content.classList.toggle('show');
+            icon.classList.toggle('rotate');
+        }
+        
         // Copy prompt function
         function copyPrompt() {
-            const location = "{{ address }}".replace(/^\d+\s+/, '').trim(); // Remove street number
+            const fullAddress = "{{ address }}";
+            // Extract city and state only (remove street address and zip code)
+            // Address format is typically: "123 Main St, City, State ZIP"
+            const parts = fullAddress.split(',');
+            let location = fullAddress;
+            if (parts.length >= 3) {
+                const city = parts[parts.length - 2].trim();
+                const stateZip = parts[parts.length - 1].trim();
+                const state = stateZip.replace(/\d+/g, '').trim(); // Remove zip code
+                location = `${city}, ${state}`;
+            }
+            
             const prompt = `Guess the price of this house:
 Location: ${location}
 Bedrooms: {{ beds }}
