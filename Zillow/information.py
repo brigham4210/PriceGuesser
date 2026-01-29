@@ -17,25 +17,22 @@ class Information:
         soup = BeautifulSoup(response.text, 'html.parser')
         close_session()
 
-        # Add error handling for each element
         try:
-            # Try new structure with class "price-text"
+            # Price extraction
             price_elem = soup.find('span', class_='price-text')
-            if not price_elem:
-                # Fallback to old structure
-                price_elem = soup.find('span', {'data-testid': 'price'})
             price = price_elem.text if price_elem else 'Price not available'
         except AttributeError:
             price = 'Price not available'
 
         try:
+            # Address extraction
             address_elem = soup.find('h1')
             address = address_elem.text.strip() if address_elem else 'Address not available'
         except AttributeError:
             address = 'Address not available'
 
         try:
-            # New structure: find all bed-bath-sqft-text__value elements
+            # Beds, baths, sqft extraction
             value_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__value'})
             desc_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__description'})
             
@@ -44,57 +41,36 @@ class Information:
                 baths = f"{value_spans[1].text} {desc_spans[1].text}"
                 sqft = f"{value_spans[2].text} {desc_spans[2].text}"
             else:
-                # Fallback to old structure
-                facts = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
-                beds = facts[0].text if len(facts) > 0 else 'N/A'
-                baths = facts[1].text if len(facts) > 1 else 'N/A'
-                sqft = facts[2].text if len(facts) > 2 else 'N/A'
+                beds, baths, sqft = 'N/A', 'N/A', 'N/A'
         except (AttributeError, IndexError):
             beds, baths, sqft = 'N/A', 'N/A', 'N/A'
 
         try:
-            # New structure: find at-a-glance section
+            # Year built and land area extraction
             at_a_glance = soup.find('div', {'data-testid': 'at-a-glance'})
             year_built = 'N/A'
             land_area = 'N/A'
             
             if at_a_glance:
-                # Find all text spans in the at-a-glance section
                 text_spans = at_a_glance.find_all('span', class_=lambda c: c and 'llcOCk' in c)
                 for span in text_spans:
                     text = span.text.strip()
                     if 'Built in' in text:
                         year_built = text
-                    elif 'sqft' in text and ('acre' in text.lower() or any(char.isdigit() for char in text.split('sqft')[0])):
-                        # Check if it's lot size (not the building sqft which is already captured)
-                        # Lot size usually comes with "sqft" and is different from building sqft
-                        if 'price' not in text.lower():
-                            land_area = text
-            
-            # Fallback to old structure if new one didn't work
-            if year_built == 'N/A' or land_area == 'N/A':
-                others_container = soup.find('div', {'aria-label': "At a glance facts"})
-                others = others_container.find_all('span') if others_container else []
-                if year_built == 'N/A':
-                    year_built = others[1].text if len(others) > 1 else 'N/A'
-                if land_area == 'N/A':
-                    land_area = others[2].text if len(others) > 2 else 'N/A'
+                    elif 'sqft' in text and 'price' not in text.lower():
+                        land_area = text
         except (AttributeError, IndexError):
             year_built, land_area = 'N/A', 'N/A'
 
         try:
-            # Images are loaded by JavaScript, not in the HTML elements
-            # Extract photo URLs from the entire page (they're in script tags as JSON data)
+            # Image extraction - images are in JavaScript/JSON data, not HTML elements
             image_urls = []
-            
             html_content = str(soup)
             
-            # Try multiple common image formats used by Zillow
+            # Try common Zillow image formats
             patterns = [
-                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1920_1280\.jpg',
                 r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1536_1152\.webp',
                 r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_1536\.jpg',
-                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_960\.jpg',
             ]
             
             seen = set()
@@ -106,25 +82,19 @@ class Information:
                         image_urls.append(url)
                 
                 if len(image_urls) > 0:
-                    print(f"Found {len(image_urls)} images using pattern: {pattern}")
                     break
             
+            # Fallback: extract unique photo hashes and construct URLs
             if len(image_urls) == 0:
-                print("No images found with standard patterns, trying all formats...")
-                # Fallback: get all unique photo hashes
-                all_urls = re.findall(r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-[a-zA-Z0-9_]+\.(?:jpg|webp)', html_content)
-                hashes_seen = set()
-                for url in all_urls:
-                    photo_hash = url.split('/fp/')[-1].split('-')[0]
-                    if photo_hash not in hashes_seen and len(photo_hash) == 32:
-                        hashes_seen.add(photo_hash)
-                        # Use a common high-res format
+                all_urls = re.findall(r'https://photos\.zillowstatic\.com/fp/([a-f0-9]{32})-', html_content)
+                seen_hashes = set()
+                for photo_hash in all_urls:
+                    if photo_hash not in seen_hashes:
+                        seen_hashes.add(photo_hash)
                         image_urls.append(f"https://photos.zillowstatic.com/fp/{photo_hash}-cc_ft_1536.jpg")
             
-            print(f"Found {len(image_urls)} unique property images")
-        except (AttributeError, TypeError, Exception) as e:
-            print(f"Error extracting images: {e}")
-            image_urls = []
+            print(f"Found {len(image_urls)} property images")
+        except Exception as e:
             print(f"Error extracting images: {e}")
             image_urls = []
 
