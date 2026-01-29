@@ -82,33 +82,50 @@ class Information:
             year_built, land_area = 'N/A', 'N/A'
 
         try:
-            # Try new structure with group-by-room photos
-            gallery = soup.find('div', {'data-testid': 'group-by-room-list'})
+            # Images are loaded by JavaScript, not in the HTML elements
+            # Extract photo URLs from the entire page (they're in script tags as JSON data)
+            import re
             image_urls = []
             
-            if gallery:
-                # Find all picture/source elements for higher quality images
-                pictures = gallery.find_all('picture')
-                for picture in pictures:
-                    # Try to get from source tag first (higher quality)
-                    source = picture.find('source', {'type': 'image/jpeg'})
-                    if source and source.get('srcset'):
-                        # Get the highest resolution from srcset
-                        srcset = source['srcset']
-                        urls = [url.strip().split()[0] for url in srcset.split(',')]
-                        if urls:
-                            image_urls.append(urls[-1])  # Last one is usually highest res
-                    else:
-                        # Fallback to img tag
-                        img = picture.find('img')
-                        if img and img.get('src'):
-                            image_urls.append(img['src'])
-            else:
-                # Fallback to old structure
-                images_container = soup.find('div', {'data-testid': "hollywood-gallery-images-tile-list"})
-                images = images_container.find_all('img') if images_container else []
-                image_urls = [image['src'] for image in images if image.get('src')]
-        except (AttributeError, TypeError):
+            html_content = str(soup)
+            
+            # Try multiple common image formats used by Zillow
+            patterns = [
+                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1920_1280\.jpg',
+                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1536_1152\.webp',
+                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_1536\.jpg',
+                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_960\.jpg',
+            ]
+            
+            seen = set()
+            for pattern in patterns:
+                photo_urls = re.findall(pattern, html_content)
+                for url in photo_urls:
+                    if url not in seen:
+                        seen.add(url)
+                        image_urls.append(url)
+                
+                if len(image_urls) > 0:
+                    print(f"Found {len(image_urls)} images using pattern: {pattern}")
+                    break
+            
+            if len(image_urls) == 0:
+                print("No images found with standard patterns, trying all formats...")
+                # Fallback: get all unique photo hashes
+                all_urls = re.findall(r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-[a-zA-Z0-9_]+\.(?:jpg|webp)', html_content)
+                hashes_seen = set()
+                for url in all_urls:
+                    photo_hash = url.split('/fp/')[-1].split('-')[0]
+                    if photo_hash not in hashes_seen and len(photo_hash) == 32:
+                        hashes_seen.add(photo_hash)
+                        # Use a common high-res format
+                        image_urls.append(f"https://photos.zillowstatic.com/fp/{photo_hash}-cc_ft_1536.jpg")
+            
+            print(f"Found {len(image_urls)} unique property images")
+        except (AttributeError, TypeError, Exception) as e:
+            print(f"Error extracting images: {e}")
+            image_urls = []
+            print(f"Error extracting images: {e}")
             image_urls = []
 
         return address, price, beds, baths, sqft, land_area, year_built, image_urls
