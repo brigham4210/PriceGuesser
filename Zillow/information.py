@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+import re
 
 from Zillow import SESSION, HEADERS, close_session
 from Zillow.property import Property
@@ -84,7 +85,6 @@ class Information:
         try:
             # Images are loaded by JavaScript, not in the HTML elements
             # Extract photo URLs from the entire page (they're in script tags as JSON data)
-            import re
             image_urls = []
             
             html_content = str(soup)
