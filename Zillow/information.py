@@ -66,6 +66,10 @@ class Information:
             year_built = 'N/A'
             land_area = 'N/A'
 
+            acres_span = soup.find('span', string=re.compile(r'\b(Acres|Acre)\b', re.IGNORECASE))
+            if acres_span:
+                land_area = acres_span.get_text(strip=True)
+
             at_a_glance = soup.find('div', {'data-testid': 'at-a-glance'})
             if not at_a_glance:
                 at_a_glance = soup.find('div', {'aria-label': 'At a glance facts'})
@@ -81,6 +85,7 @@ class Information:
                     elif re.search(r'\b(Acres|Acre)\b', text, re.IGNORECASE) or re.search(r'\bsqft\b', text, re.IGNORECASE):
                         if 'price' not in text.lower() and 'zestimate' not in text.lower() and '/sqft' not in text.lower():
                             land_area = text
+
         except (AttributeError, IndexError):
             year_built, land_area = 'N/A', 'N/A'
 
