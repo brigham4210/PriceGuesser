@@ -18,9 +18,13 @@ class Information:
         close_session()
 
         try:
-            # Price extraction
-            price_elem = soup.find('span', class_='price-text')
-            price = price_elem.text if price_elem else 'Price not available'
+            # Price extraction (multiple layouts)
+            price_elem = soup.find('span', {'data-testid': 'price'})
+            if price_elem:
+                price = price_elem.get_text(strip=True)
+            else:
+                price_elem = soup.find('span', class_='price-text')
+                price = price_elem.get_text(strip=True) if price_elem else 'Price not available'
         except AttributeError:
             price = 'Price not available'
 
@@ -32,33 +36,51 @@ class Information:
             address = 'Address not available'
 
         try:
-            # Beds, baths, sqft extraction
-            value_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__value'})
-            desc_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__description'})
-            
-            if len(value_spans) >= 3 and len(desc_spans) >= 3:
-                beds = f"{value_spans[0].text} {desc_spans[0].text}"
-                baths = f"{value_spans[1].text} {desc_spans[1].text}"
-                sqft = f"{value_spans[2].text} {desc_spans[2].text}"
-            else:
-                beds, baths, sqft = 'N/A', 'N/A', 'N/A'
+            # Beds, baths, sqft extraction (multiple layouts)
+            beds, baths, sqft = 'N/A', 'N/A', 'N/A'
+            fact_containers = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
+            for container in fact_containers:
+                spans = container.find_all('span')
+                if len(spans) >= 2:
+                    value = spans[0].get_text(strip=True)
+                    desc = spans[1].get_text(strip=True).lower()
+                    if 'bed' in desc:
+                        beds = f"{value} {spans[1].get_text(strip=True)}"
+                    elif 'bath' in desc:
+                        baths = f"{value} {spans[1].get_text(strip=True)}"
+                    elif 'sqft' in desc:
+                        sqft = f"{value} {spans[1].get_text(strip=True)}"
+
+            if beds == baths == sqft == 'N/A':
+                value_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__value'})
+                desc_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__description'})
+                if len(value_spans) >= 3 and len(desc_spans) >= 3:
+                    beds = f"{value_spans[0].text} {desc_spans[0].text}"
+                    baths = f"{value_spans[1].text} {desc_spans[1].text}"
+                    sqft = f"{value_spans[2].text} {desc_spans[2].text}"
         except (AttributeError, IndexError):
             beds, baths, sqft = 'N/A', 'N/A', 'N/A'
 
         try:
             # Year built and land area extraction
-            at_a_glance = soup.find('div', {'data-testid': 'at-a-glance'})
             year_built = 'N/A'
             land_area = 'N/A'
-            
+
+            at_a_glance = soup.find('div', {'data-testid': 'at-a-glance'})
+            if not at_a_glance:
+                at_a_glance = soup.find('div', {'aria-label': 'At a glance facts'})
+
             if at_a_glance:
-                text_spans = at_a_glance.find_all('span', class_=lambda c: c and 'llcOCk' in c)
+                text_spans = at_a_glance.find_all('span')
                 for span in text_spans:
-                    text = span.text.strip()
+                    text = span.get_text(strip=True)
+                    if not text:
+                        continue
                     if 'Built in' in text:
                         year_built = text
-                    elif 'sqft' in text and 'price' not in text.lower():
-                        land_area = text
+                    elif re.search(r'\b(Acres|Acre)\b', text, re.IGNORECASE) or re.search(r'\bsqft\b', text, re.IGNORECASE):
+                        if 'price' not in text.lower() and 'zestimate' not in text.lower() and '/sqft' not in text.lower():
+                            land_area = text
         except (AttributeError, IndexError):
             year_built, land_area = 'N/A', 'N/A'
 
@@ -102,7 +124,7 @@ class Information:
 
     def __str__(self):
         info = self.get_info()
-        return f"Address: {info[0]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]}}}"
+        return f"Address: {info[0]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]}"
 
     def get_image_urls(self):
         info = self.get_info()
