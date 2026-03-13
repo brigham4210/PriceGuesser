@@ -182,6 +182,35 @@
     <div class="container">
         <h1>🏠 Guess the Price!</h1>
         <div class="address">{{ address }}</div>
+
+        {% if not guessed %}
+        <div class="guess-section">
+            <h2>What's your guess?</h2>
+            <form action="/guess" method="POST">
+                <input type="text" id="guessInput" name="guess" placeholder="$500,000" required>
+                <button type="submit">Submit Guess</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="result">
+            <h2>Results</h2>
+            <p><strong>Your Guess:</strong> {{ user_guess }}</p>
+            <div class="price">Actual Price: {{ price }}</div>
+            {% if difference is not none %}
+            <div class="difference">
+                {% if difference > 0 %}
+                You guessed <strong style="color: #dc3545;">${{ "{:,.0f}".format(difference) }}</strong> too high
+                {% elif difference < 0 %}
+                You guessed <strong style="color: #007bff;">${{ "{:,.0f}".format(-difference) }}</strong> too low
+                {% else %}
+                <strong style="color: #28a745;">Perfect guess! 🎯</strong>
+                {% endif %}
+            </div>
+            {% endif %}
+            <a href="/generate_again" class="again-btn">Try Another Property (Same Criteria)</a>
+            <a href="/reset" class="reset-btn">New Search</a>
+        </div>
+        {% endif %}
         
         <div class="property-info">
             <div class="info-row">
@@ -215,35 +244,6 @@
             <img src="{{ img_url }}" alt="Property image">
             {% endfor %}
         </div>
-        
-        {% if not guessed %}
-        <div class="guess-section">
-            <h2>What's your guess?</h2>
-            <form action="/guess" method="POST">
-                <input type="text" id="guessInput" name="guess" placeholder="$500,000" required>
-                <button type="submit">Submit Guess</button>
-            </form>
-        </div>
-        {% else %}
-        <div class="result">
-            <h2>Results</h2>
-            <p><strong>Your Guess:</strong> {{ user_guess }}</p>
-            <div class="price">Actual Price: {{ price }}</div>
-            {% if difference is not none %}
-            <div class="difference">
-                {% if difference > 0 %}
-                You guessed <strong style="color: #dc3545;">${{ "{:,.0f}".format(difference) }}</strong> too high
-                {% elif difference < 0 %}
-                You guessed <strong style="color: #007bff;">${{ "{:,.0f}".format(-difference) }}</strong> too low
-                {% else %}
-                <strong style="color: #28a745;">Perfect guess! 🎯</strong>
-                {% endif %}
-            </div>
-            {% endif %}
-            <a href="/generate_again" class="again-btn">Try Another Property (Same Criteria)</a>
-            <a href="/reset" class="reset-btn">New Search</a>
-        </div>
-        {% endif %}
         
         {% if guessed %}
         <div class="full-info-container">
