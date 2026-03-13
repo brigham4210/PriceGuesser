@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 class Url:
     def __init__(self, state: str, bed_min: int, bed_max: int, bath_min: int, bath_max: int):
-        self.state = state.lower().replace(',', '').replace(" ", "-")
+        self.location = state.lower().replace(',', '').replace(" ", "-")
         self.bed_min = bed_min
         self.bed_max = bed_max
         self.bath_min = bath_min
@@ -25,7 +25,7 @@ class Url:
         return json.dumps(data)
 
     def __str__(self) -> str:
-        if not self.state:
+        if not self.location:
             raise ValueError("State must be provided to generate URL.")
 
-        return f"https://www.zillow.com/{self.state}/?searchQueryState={quote(self.json())}"
+        return f"https://www.zillow.com/{self.location}/?searchQueryState={quote(self.json())}"
