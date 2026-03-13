@@ -95,22 +95,6 @@
         button:hover {
             background-color: #0056CC;
         }
-        .copy-prompt-btn {
-            display: block;
-            width: fit-content;
-            margin: 20px auto;
-            background-color: #28a745;
-        }
-        .copy-prompt-btn:hover {
-            background-color: #218838;
-        }
-        .copy-feedback {
-            display: none;
-            text-align: center;
-            color: #28a745;
-            font-size: 14px;
-            margin-top: 10px;
-        }
         .full-info-container {
             margin-top: 30px;
             background-color: #f0f0f0;
@@ -226,9 +210,6 @@
             </div>
         </div>
         
-        <button class="copy-prompt-btn" onclick="copyPrompt()">📋 Copy Prompt</button>
-        <div class="copy-feedback" id="copyFeedback">✓ Copied to clipboard!</div>
-        
         <div class="images">
             {% for img_url in image_urls %}
             <img src="{{ img_url }}" alt="Property image">
@@ -284,40 +265,6 @@
             const icon = document.getElementById('toggleIcon');
             content.classList.toggle('show');
             icon.classList.toggle('rotate');
-        }
-        
-        // Copy prompt function
-        function copyPrompt() {
-            const fullAddress = "{{ address }}";
-            // Extract city and state only (remove street address and zip code)
-            // Address format is typically: "123 Main St, City, State ZIP"
-            const parts = fullAddress.split(',');
-            let location = fullAddress;
-            if (parts.length >= 3) {
-                const city = parts[parts.length - 2].trim();
-                const stateZip = parts[parts.length - 1].trim();
-                const state = stateZip.replace(/\d+/g, '').trim(); // Remove zip code
-                location = `${city}, ${state}`;
-            }
-            
-            const prompt = `Guess the price of this house:
-Location: ${location}
-Bedrooms: {{ beds }}
-Bathrooms: {{ baths }}
-Square Feet: {{ sqft }}
-Land Area: {{ land_area }}
-Year Built: {{ year_built }}`;
-            
-            navigator.clipboard.writeText(prompt).then(() => {
-                const feedback = document.getElementById('copyFeedback');
-                feedback.style.display = 'block';
-                setTimeout(() => {
-                    feedback.style.display = 'none';
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy to clipboard');
-            });
         }
         
         // Format number with commas while typing
