@@ -58,12 +58,24 @@
         .row .form-group {
             flex: 1;
         }
+        .error {
+            background-color: #fdecea;
+            color: #b42318;
+            border: 1px solid #f5c2c7;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🏠 Price Guesser</h1>
         <p style="text-align: center; color: #666;">Enter your search criteria to find a random property!</p>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
         
         <form action="/generate" method="POST">
             <div class="form-group">

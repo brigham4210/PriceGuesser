@@ -8,6 +8,36 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
 
+def _get_random_property_url_with_fallback(criteria):
+    # First try the user's exact criteria, then retry once with relaxed filters.
+    attempts = [
+        criteria,
+        {
+            'state': criteria.get('state'),
+            'bed_min': None,
+            'bed_max': None,
+            'bath_min': None,
+            'bath_max': None,
+        }
+    ]
+
+    for attempt in attempts:
+        url = Url(state=attempt['state'],
+                  bed_min=attempt['bed_min'],
+                  bed_max=attempt['bed_max'],
+                  bath_min=attempt['bath_min'],
+                  bath_max=attempt['bath_max'])
+        property_obj = Property(url)
+        try:
+            return property_obj.get_random_property_url()
+        except ValueError:
+            continue
+
+    raise ValueError(
+        "No properties found for your filters or broad state search. Try another state."
+    )
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -31,11 +61,10 @@ def generate():
         'bath_max': bath_max
     }
 
-    # Create URL and get random property
-    url = Url(state=state, bed_min=bed_min, bed_max=bed_max,
-              bath_min=bath_min, bath_max=bath_max)
-    property_obj = Property(url)
-    property_url = property_obj.get_random_property_url()
+    try:
+        property_url = _get_random_property_url_with_fallback(session['search_criteria'])
+    except ValueError as err:
+        return render_template('index.html', error=str(err))
 
     # Get property information
     info = Information(property_url)
@@ -108,13 +137,10 @@ def generate_again():
         return redirect(url_for('index'))
 
     criteria = session['search_criteria']
-    url = Url(state=criteria['state'],
-              bed_min=criteria['bed_min'],
-              bed_max=criteria['bed_max'],
-              bath_min=criteria['bath_min'],
-              bath_max=criteria['bath_max'])
-    property_obj = Property(url)
-    property_url = property_obj.get_random_property_url()
+    try:
+        property_url = _get_random_property_url_with_fallback(criteria)
+    except ValueError as err:
+        return render_template('index.html', error=str(err))
 
     # Get property information
     info = Information(property_url)
