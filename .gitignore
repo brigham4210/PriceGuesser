@@ -1,6 +1,7 @@
 .idea/
 .venv/
 __pycache__/
+Zillow/__pycache__/
 pycache/
 *.pyc
 .DS_Store
