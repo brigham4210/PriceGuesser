@@ -1,67 +1,87 @@
 # 🏠 PriceGuesser
 
-An interactive web-based game where you guess real estate property prices using actual Zillow listings. Challenge yourself to predict property values based on property details like location, bedrooms, bathrooms, and square footage!
+An interactive web game where you guess the prices of real Zillow listings. Each game is 5 rounds; the closer your guess, the more points you score.
 
 ## 📋 Overview
 
-PriceGuesser is a Flask web application that scrapes live Zillow property listings and presents them to users for price guessing. Players can filter properties by state and bedroom/bathroom ranges, then make predictions about property values. The app reveals the actual price and shows how close their guess was.
+PriceGuesser is a Flask web application that scrapes live Zillow listings and presents them for price guessing. Players pick a state and optional bedroom/bathroom ranges, then guess each property's price. After each guess the app reveals the actual price, how far off you were, and your points for the round.
 
 ## 🎮 How It Works
 
-1. **Enter Search Criteria** - Specify a state and optional bedroom/bathroom ranges
-2. **Generate Property** - App fetches a random Zillow listing matching your filters
-3. **View Property Details** - See photos, address, beds, baths, sqft, land area, and year built
-4. **Make Your Guess** - Enter your predicted property price
-5. **See Results** - Reveal the actual price and view your difference (±$)
-6. **Play Again** - Generate another property or modify your search criteria
+1. **Pick a state** - Choose a state and, optionally, bedroom and bathroom ranges
+2. **View the property** - See photos, address, beds, baths, sqft, land area, and year built
+3. **Make your guess** - Type a price like `$450,000`, `450000` or `450k`
+4. **See the result** - The actual price, how far off you were, and your points (up to 5,000)
+5. **Play 5 rounds** - Then see your final score out of 25,000 and your best score in this browser
+
+### Scoring
+
+Points depend on how far off you were as a percentage of the price, so $50k off a $200k home costs more than $50k off a $5M home:
+
+| Off by | Points |
+|--------|--------|
+| 0% | 5,000 |
+| 1% | 4,804 |
+| 10% | 3,352 |
+| 25% | 1,839 |
+| 50% | 677 |
 
 ## ✨ Features
 
-- **Property Filtering** - Search by state with optional bedroom and bathroom range filters
-- **Smart Fallback** - If specific criteria yields no results, automatically relaxes filters to find properties by state
-- **Live Zillow Data** - Real property information scraped directly from Zillow
-- **Property Images** - View actual listing photos
-- **Session Management** - Game state persists across page navigation
-- **Error Handling** - Graceful handling of unavailable properties and scraping issues
-- **Responsive Design** - Clean, styled interface that works across devices
+- **Property filtering** - Search by state with optional bedroom and bathroom ranges, checked on the server
+- **Smart fallback** - If your filters find nothing, the app searches the whole state; listings without a sale price (rentals, missing prices) are skipped
+- **Fair play** - Prices are kept on the server. The session cookie holds only a random game ID
+- **Caching** - Search results are cached for 15 minutes and listings for 1 hour, so later rounds make one request to Zillow instead of two
+- **Safe failures** - Timeouts, limited retries, and detection of Zillow's block pages. Errors show a message instead of a crash
+- **Photo carousel** - Browse listing photos with buttons or the arrow keys
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Flask (Python web framework)
-- **Web Scraping**: BeautifulSoup, Requests library
-- **Frontend**: HTML5, CSS3
-- **State Management**: Flask session management
+- **Backend**: Flask
+- **Web scraping**: BeautifulSoup, Requests
+- **Frontend**: HTML, CSS, a little JavaScript
+- **Tests**: pytest, run on GitHub Actions
 
 ## 📁 Project Structure
 
 ```
 PriceGuesser/
-├── main.py                    # Flask app & route handlers
-├── README.md                  # This file
-├── static/                    # Static assets (CSS, images, favicon)
+├── main.py                 # Flask app factory and routes
+├── game.py                 # Game, rounds, scoring, server-side game store
+├── forms.py                # Search form and guess validation, state list
+├── requirements.txt        # Pinned runtime dependencies
+├── requirements-dev.txt    # Adds pytest
+├── static/
+│   ├── css/style.css
+│   ├── js/game.js          # Guess formatting, photo carousel, best score
+│   └── favicon.svg
 ├── templates/
-│   ├── index.html            # Search criteria form page
-│   └── game.html             # Game interface & guessing page
-└── Zillow/
-    ├── __init__.py           # Session & request headers config
-    ├── url.py                # Build Zillow search URLs
-    ├── property.py           # Fetch random properties from search results
-    └── information.py        # Scrape property details & images from listing page
+│   ├── base.html
+│   ├── index.html          # Search form
+│   ├── game.html           # Guessing and results
+│   └── summary.html        # Final score
+├── Zillow/
+│   ├── __init__.py         # Error types
+│   ├── client.py           # HTTP: timeouts, retries, block detection
+│   ├── cache.py            # In-memory TTL cache
+│   ├── url.py              # Build Zillow search URLs
+│   ├── property.py         # Listing links from search results
+│   ├── information.py      # Listing details from a listing page
+│   ├── listing.py          # Listing record and price parsing
+│   └── search.py           # Pick a random playable listing
+└── tests/                  # pytest suite with saved HTML fixtures
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.7+
-- Flask
-- BeautifulSoup4
-- Requests
+- Python 3.10+
 
 ### Installation
 
 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/brigham4210/PriceGuesser.git
 cd PriceGuesser
 ```
 
@@ -73,7 +93,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 3. Install dependencies
 ```bash
-pip install flask beautifulsoup4 requests
+pip install -r requirements.txt
 ```
 
 4. Run the application
@@ -81,41 +101,44 @@ pip install flask beautifulsoup4 requests
 python main.py
 ```
 
-5. Open your browser and navigate to `http://localhost:5000`
+5. Open `http://localhost:5000`
 
-## 🌐 API Routes
+### Configuration
+
+Set these environment variables as needed:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SECRET_KEY` | random per start | Signs the session cookie. Without it, every player's session resets when the server restarts |
+| `FLASK_DEBUG` | off | Set to `1` to run with the debugger and auto-reload |
+| `LOG_LEVEL` | `INFO` | Logging level, for example `DEBUG` or `WARNING` |
+
+### Running tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Tests never call Zillow. Scraper tests use small HTML fixtures in `tests/fixtures/` that mirror the parts of Zillow's markup the parser reads.
+
+## 🌐 Routes
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/` | GET | Home page with search form |
-| `/generate` | POST | Process search criteria and fetch a property |
-| `/game` | GET | Display property with guessing interface |
-| `/guess` | POST | Submit price guess |
-| `/generate_again` | GET | Fetch another property with same search criteria |
-
-## 📝 Example Usage
-
-1. Go to the homepage
-2. Enter state abbreviation (e.g., "CA", "NY", "TX")
-3. Optionally specify bedroom and bathroom ranges
-4. Click "Find Property"
-5. View the property details and images
-6. Enter your price guess in the format: `$500000` or `500000`
-7. Click "Guess Price" to reveal the actual price
-8. Click "Another Property" to search again or go back to modify criteria
-
-## 🔍 How Web Scraping Works
-
-The app uses BeautifulSoup to:
-- **Zillow Search URLs** - Generate search URLs based on user filters
-- **Property Listings** - Extract property URLs from Zillow search results
-- **Property Information** - Scrape property details (price, address, beds, baths, sqft, land area, year built) and image URLs from individual listing pages
+| `/` | GET | Search form |
+| `/start` | POST | Validate the search and start a 5-round game |
+| `/game` | GET | Current round |
+| `/guess` | POST | Submit a guess for the current round |
+| `/next` | POST | Load the next round |
+| `/summary` | GET | Final score after round 5 |
+| `/reset` | POST | End the game and go back to the search form |
 
 ## ⚠️ Notes
 
-- Zillow may occasionally block requests; the app includes fallback mechanisms
-- Property data is fetched in real-time, so listings may no longer be available
-- Game generates random properties from search results for variety
+- Games are kept in the server's memory. They are lost on restart and aren't shared between worker processes, so run a single process (the default for `python main.py`).
+- Zillow may block requests at any time; when it does, the app says so and asks you to try again later.
+- Zillow's terms of service may not allow scraping. This project is for personal and educational use.
 
 ## 📄 License
 

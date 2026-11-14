@@ -1,140 +1,140 @@
-from bs4 import BeautifulSoup
+"""Read one Zillow listing page into a Listing."""
+import logging
 import re
 
-from Zillow import SESSION, HEADERS, close_session
-from Zillow.property import Property
-from Zillow.url import Url
+from bs4 import BeautifulSoup
+
+from Zillow import BlockedError, UnusableListing
+from Zillow.cache import TTLCache
+from Zillow.client import BLOCKED_MESSAGE, fetch
+from Zillow.listing import Listing, parse_price
+
+log = logging.getLogger(__name__)
+
+LISTING_CACHE = TTLCache(ttl_seconds=60 * 60, max_entries=500)
+
+_ACRES_RE = re.compile(r"\b(Acres|Acre)\b", re.IGNORECASE)
+_SQFT_RE = re.compile(r"\bsqft\b", re.IGNORECASE)
+_IMAGE_PATTERNS = (
+    re.compile(r"https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1536_1152\.webp"),
+    re.compile(r"https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_1536\.jpg"),
+)
+_PHOTO_HASH_RE = re.compile(r"https://photos\.zillowstatic\.com/fp/([a-f0-9]{32})-")
 
 
-class Information:
-    def __init__(self, url):
-        # Coerce to string once to avoid repeated __str__ calls on objects like Property
-        self.url = str(url)
+def _text(elem):
+    return elem.get_text(strip=True) if elem else ""
 
-    def get_info(self):
-        print(f"Fetching property information from {self.url}")
-        response = SESSION.get(self.url, headers=HEADERS)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        close_session()
 
-        try:
-            # Price extraction (multiple layouts)
-            price_elem = soup.find('span', {'data-testid': 'price'})
-            if price_elem:
-                price = price_elem.get_text(strip=True)
-            else:
-                price_elem = soup.find('span', class_='price-text')
-                price = price_elem.get_text(strip=True) if price_elem else 'Price not available'
-        except AttributeError:
-            price = 'Price not available'
+def _address(soup):
+    elem = soup.find("h1")
+    if not elem:
+        return ""
+    # Zillow splits the street and city into child elements; keep a space between them.
+    text = " ".join(elem.get_text(" ", strip=True).split())
+    return re.sub(r"\s*,\s*", ", ", text)
 
-        try:
-            # Address extraction
-            address_elem = soup.find('h1')
-            address = address_elem.text.strip() if address_elem else 'Address not available'
-        except AttributeError:
-            address = 'Address not available'
 
-        try:
-            # Beds, baths, sqft extraction (multiple layouts)
-            beds, baths, sqft = 'N/A', 'N/A', 'N/A'
-            fact_containers = soup.find_all('div', {'data-testid': 'bed-bath-sqft-fact-container'})
-            for container in fact_containers:
-                spans = container.find_all('span')
-                if len(spans) >= 2:
-                    value = spans[0].get_text(strip=True)
-                    desc = spans[1].get_text(strip=True).lower()
-                    if 'bed' in desc:
-                        beds = f"{value} {spans[1].get_text(strip=True)}"
-                    elif 'bath' in desc:
-                        baths = f"{value} {spans[1].get_text(strip=True)}"
-                    elif 'sqft' in desc:
-                        sqft = f"{value} {spans[1].get_text(strip=True)}"
+def _price_text(soup):
+    elem = soup.find("span", {"data-testid": "price"}) or soup.find("span", class_="price-text")
+    return _text(elem)
 
-            if beds == baths == sqft == 'N/A':
-                value_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__value'})
-                desc_spans = soup.find_all('span', {'data-testid': 'bed-bath-sqft-text__description'})
-                if len(value_spans) >= 3 and len(desc_spans) >= 3:
-                    beds = f"{value_spans[0].text} {desc_spans[0].text}"
-                    baths = f"{value_spans[1].text} {desc_spans[1].text}"
-                    sqft = f"{value_spans[2].text} {desc_spans[2].text}"
-        except (AttributeError, IndexError):
-            beds, baths, sqft = 'N/A', 'N/A', 'N/A'
 
-        try:
-            # Year built and land area extraction
-            year_built = 'N/A'
-            land_area = 'N/A'
+def _bed_bath_sqft(soup):
+    beds = baths = sqft = "N/A"
+    for container in soup.find_all("div", {"data-testid": "bed-bath-sqft-fact-container"}):
+        spans = container.find_all("span")
+        if len(spans) < 2:
+            continue
+        value, label = spans[0].get_text(strip=True), spans[1].get_text(strip=True)
+        lower = label.lower()
+        if "bed" in lower:
+            beds = f"{value} {label}"
+        elif "bath" in lower:
+            baths = f"{value} {label}"
+        elif "sqft" in lower:
+            sqft = f"{value} {label}"
 
-            acres_span = soup.find('span', string=re.compile(r'\b(Acres|Acre)\b', re.IGNORECASE))
-            if acres_span:
-                land_area = acres_span.get_text(strip=True)
+    if beds == baths == sqft == "N/A":
+        values = soup.find_all("span", {"data-testid": "bed-bath-sqft-text__value"})
+        labels = soup.find_all("span", {"data-testid": "bed-bath-sqft-text__description"})
+        if len(values) >= 3 and len(labels) >= 3:
+            beds, baths, sqft = (f"{v.get_text(strip=True)} {d.get_text(strip=True)}" for v, d in zip(values[:3], labels[:3]))
+    return beds, baths, sqft
 
-            at_a_glance = soup.find('div', {'data-testid': 'at-a-glance'})
-            if not at_a_glance:
-                at_a_glance = soup.find('div', {'aria-label': 'At a glance facts'})
 
-            if at_a_glance:
-                text_spans = at_a_glance.find_all('span')
-                for span in text_spans:
-                    text = span.get_text(strip=True)
-                    if not text:
-                        continue
-                    if 'Built in' in text:
-                        year_built = text
-                    elif re.search(r'\b(Acres|Acre)\b', text, re.IGNORECASE) or re.search(r'\bsqft\b', text, re.IGNORECASE):
-                        if 'price' not in text.lower() and 'zestimate' not in text.lower() and '/sqft' not in text.lower():
-                            land_area = text
+def _year_and_land(soup):
+    year_built = land_area = "N/A"
+    acres = soup.find("span", string=_ACRES_RE)
+    if acres:
+        land_area = acres.get_text(strip=True)
 
-        except (AttributeError, IndexError):
-            year_built, land_area = 'N/A', 'N/A'
+    glance = soup.find("div", {"data-testid": "at-a-glance"}) or soup.find("div", {"aria-label": "At a glance facts"})
+    if glance:
+        for span in glance.find_all("span"):
+            text = span.get_text(strip=True)
+            if not text:
+                continue
+            lower = text.lower()
+            if "built in" in lower:
+                year_built = text
+            elif (_ACRES_RE.search(text) or _SQFT_RE.search(text)) and not any(
+                word in lower for word in ("price", "zestimate", "/sqft")
+            ):
+                land_area = text
+    return year_built, land_area
 
-        try:
-            # Image extraction - images are in JavaScript/JSON data, not HTML elements
-            image_urls = []
-            html_content = str(soup)
-            
-            # Try common Zillow image formats
-            patterns = [
-                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-uncropped_scaled_within_1536_1152\.webp',
-                r'https://photos\.zillowstatic\.com/fp/[a-f0-9]+-cc_ft_1536\.jpg',
-            ]
-            
-            seen = set()
-            for pattern in patterns:
-                photo_urls = re.findall(pattern, html_content)
-                for url in photo_urls:
-                    if url not in seen:
-                        seen.add(url)
-                        image_urls.append(url)
-                
-                if len(image_urls) > 0:
-                    break
-            
-            # Fallback: extract unique photo hashes and construct URLs
-            if len(image_urls) == 0:
-                all_urls = re.findall(r'https://photos\.zillowstatic\.com/fp/([a-f0-9]{32})-', html_content)
-                seen_hashes = set()
-                for photo_hash in all_urls:
-                    if photo_hash not in seen_hashes:
-                        seen_hashes.add(photo_hash)
-                        image_urls.append(f"https://photos.zillowstatic.com/fp/{photo_hash}-cc_ft_1536.jpg")
-            
-            print(f"Found {len(image_urls)} property images")
-        except Exception as e:
-            print(f"Error extracting images: {e}")
-            image_urls = []
 
-        return address, price, beds, baths, sqft, land_area, year_built, image_urls
+def _image_urls(html):
+    for pattern in _IMAGE_PATTERNS:
+        urls = list(dict.fromkeys(pattern.findall(html)))
+        if urls:
+            return tuple(urls)
+    hashes = dict.fromkeys(_PHOTO_HASH_RE.findall(html))
+    return tuple(f"https://photos.zillowstatic.com/fp/{h}-cc_ft_1536.jpg" for h in hashes)
 
-    def __str__(self):
-        info = self.get_info()
-        return f"Address: {info[0]}\n{info[2]} {info[3]} {info[4]}\n{info[5]}\n{info[6]}"
 
-    def get_image_urls(self):
-        info = self.get_info()
-        return info[7]
+def parse_listing(html, url):
+    """Parse a listing page. Pure: no network access."""
+    soup = BeautifulSoup(html, "html.parser")
+    price_text = _price_text(soup)
+    address = _address(soup)
+    beds, baths, sqft = _bed_bath_sqft(soup)
+    year_built, land_area = _year_and_land(soup)
+    return Listing(
+        url=url,
+        address=address or "Address not available",
+        price=parse_price(price_text),
+        price_text=price_text or "Price not available",
+        beds=beds,
+        baths=baths,
+        sqft=sqft,
+        land_area=land_area,
+        year_built=year_built,
+        image_urls=_image_urls(html),
+    )
 
-    def get_price(self):
-        info = self.get_info()
-        return info[1]
+
+def fetch_listing(url, fetcher=fetch):
+    """Fetch and parse a listing, using the cache when possible.
+
+    Raises BlockedError when the page has neither a price nor an address
+    (Zillow served something other than the listing) and UnusableListing
+    when the listing has no sale price to guess.
+    """
+    cached = LISTING_CACHE.get(url)
+    if cached is not None:
+        return cached
+
+    log.info("Fetching listing %s", url)
+    listing = parse_listing(fetcher(url), url)
+    if listing.price is None and listing.address == "Address not available":
+        log.warning("Listing page %s had no price or address; treating it as blocked", url)
+        raise BlockedError(BLOCKED_MESSAGE)
+    if listing.price is None:
+        log.info("Skipping %s: no usable sale price (%r)", url, listing.price_text)
+        raise UnusableListing(url)
+
+    log.info("Found %d images for %s", len(listing.image_urls), url)
+    LISTING_CACHE.set(url, listing)
+    return listing

@@ -1,10 +1,13 @@
+"""Build Zillow search URLs."""
 import json
 from urllib.parse import quote
 
 
 class Url:
-    def __init__(self, state: str, bed_min: int, bed_max: int, bath_min: int, bath_max: int):
-        self.location = state.lower().replace(',', '').replace(" ", "-")
+    def __init__(self, state, bed_min=None, bed_max=None, bath_min=None, bath_max=None):
+        if not state or not state.strip():
+            raise ValueError("State must be provided to generate URL.")
+        self.location = state.strip().lower().replace(",", "").replace(" ", "-")
         self.bed_min = bed_min
         self.bed_max = bed_max
         self.bath_min = bath_min
@@ -19,13 +22,10 @@ class Url:
                 "con": {"value": False},
                 "apa": {"value": False},
                 "apco": {"value": False},
-                "land": {"value": False}
+                "land": {"value": False},
             }
         }
         return json.dumps(data)
 
-    def __str__(self) -> str:
-        if not self.location:
-            raise ValueError("State must be provided to generate URL.")
-
+    def __str__(self):
         return f"https://www.zillow.com/{self.location}/?searchQueryState={quote(self.json())}"

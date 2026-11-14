@@ -1,62 +1,47 @@
-from random import choice
+"""Read listing links from a Zillow search results page."""
+import logging
 import re
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from Zillow import SESSION, HEADERS, close_session
+from Zillow.cache import TTLCache
+from Zillow.client import fetch
+
+log = logging.getLogger(__name__)
+
+SEARCH_CACHE = TTLCache(ttl_seconds=15 * 60, max_entries=200)
+
+_BASE = "https://www.zillow.com"
+_HOMEDETAILS_RE = re.compile(r"https://www\.zillow\.com/homedetails/[^\"'\s\\]+|/homedetails/[^\"'\s\\]+")
 
 
-class Property:
-    def __init__(self, website_url):
-        self.url = str(website_url)
+def parse_property_urls(html):
+    """Return the unique listing URLs on a search page, in page order. Pure."""
+    soup = BeautifulSoup(html, "html.parser")
+    urls = []
+    for card in soup.find_all("a", {"data-test": "property-card-link"}):
+        href = card.get("href")
+        if href and "/homedetails/" in href:
+            urls.append(urljoin(_BASE, href))
 
-    def get_property_urls(self):
-        print(f"Fetching Website URLs from {self.url}")
-        response = SESSION.get(self.url, headers=HEADERS)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        property_urls = []
-        seen = set()
-        close_session()
+    # Newer markup keeps listing links in embedded JSON instead of anchors.
+    if not urls:
+        urls = [urljoin(_BASE, href) for href in _HOMEDETAILS_RE.findall(html)]
 
-        page_title = soup.find('title').text.strip() if soup.find('title') else ""
-        if "denied" not in page_title.lower():
-            print("Access granted, scraping property URLs...")
+    return list(dict.fromkeys(urls))
 
-            # Primary selector used by older Zillow markup.
-            property_cards = soup.find_all('a', {'data-test': 'property-card-link'})
-            for card in property_cards:
-                href = card.get('href')
-                if not href or '/homedetails/' not in href:
-                    continue
-                absolute_url = urljoin('https://www.zillow.com', href)
-                if absolute_url not in seen:
-                    seen.add(absolute_url)
-                    property_urls.append(absolute_url)
 
-            # Fallback for updated markup where listing links live in embedded JSON.
-            if not property_urls:
-                html = str(soup)
-                matches = re.findall(
-                    r'https://www\.zillow\.com/homedetails/[^"\'\s]+|/homedetails/[^"\'\s]+',
-                    html,
-                )
-                for href in matches:
-                    absolute_url = urljoin('https://www.zillow.com', href)
-                    if absolute_url not in seen:
-                        seen.add(absolute_url)
-                        property_urls.append(absolute_url)
+def fetch_property_urls(search_url, fetcher=fetch):
+    """Listing URLs for a search, cached for 15 minutes."""
+    cached = SEARCH_CACHE.get(search_url)
+    if cached is not None:
+        log.info("Using %d cached listing URLs for %s", len(cached), search_url)
+        return cached
 
-        print(f"Found {len(property_urls)} property URLs")
-
-        return property_urls
-
-    def get_random_property_url(self):
-        # Return one random property URL without relying on __str__ side effects
-        property_urls = self.get_property_urls()
-        if not property_urls:
-            raise ValueError("No properties found for the selected criteria.")
-        return choice(property_urls)
-
-    def __str__(self):
-        return self.get_random_property_url()
+    log.info("Fetching search results from %s", search_url)
+    urls = parse_property_urls(fetcher(search_url))
+    log.info("Found %d listing URLs", len(urls))
+    if urls:
+        SEARCH_CACHE.set(search_url, urls)
+    return urls
