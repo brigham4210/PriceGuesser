@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Final score · Price Guesser{% endblock %}
+{% block content %}
+<h1>Final score</h1>
+<p class="final-score" data-final-score="{{ game.total_score }}">
+    <strong>{{ "{:,}".format(game.total_score) }}</strong> of {{ "{:,}".format(max_total) }} points
+</p>
+<p class="best-score muted" data-best-score aria-live="polite"></p>
+
+<div class="table-wrap">
+<table class="rounds">
+    <caption class="visually-hidden">Your guesses for each round</caption>
+    <thead>
+        <tr><th scope="col">#</th><th scope="col">Property</th><th scope="col">Your guess</th>
+            <th scope="col">Actual</th><th scope="col">Off by</th><th scope="col">Points</th></tr>
+    </thead>
+    <tbody>
+        {% for r in game.rounds %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td><a href="{{ r.listing.url }}" target="_blank" rel="noopener">{{ r.listing.address }}</a></td>
+            <td>${{ "{:,}".format(r.guess) }}</td>
+            <td>${{ "{:,}".format(r.listing.price) }}</td>
+            <td>{{ "%.1f"|format(r.percent_off) }}%</td>
+            <td>{{ "{:,}".format(r.points) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="actions">
+    <form action="{{ url_for('reset') }}" method="POST">
+        <button type="submit" class="btn btn-primary">Play again</button>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+{% endblock %}

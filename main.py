@@ -1,172 +1,153 @@
-from flask import Flask, render_template, request, session, redirect, url_for
-from Zillow.url import Url
-from Zillow.property import Property
-from Zillow.information import Information
+import logging
+import os
 import secrets
 
-app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+from flask import Flask, flash, redirect, render_template, request, session, url_for
+
+from forms import STATES, parse_guess, validate_search
+from game import MAX_POINTS, ROUNDS_PER_GAME, GameStore
+from Zillow import ScrapeError
+from Zillow.search import find_listing
+
+log = logging.getLogger(__name__)
+
+EMPTY_FORM = {"state": "", "bed_min": "", "bed_max": "", "bath_min": "", "bath_max": ""}
 
 
-def _get_random_property_url_with_fallback(criteria):
-    # First try the user's exact criteria, then retry once with relaxed filters.
-    attempts = [
-        criteria,
-        {
-            'state': criteria.get('state'),
-            'bed_min': None,
-            'bed_max': None,
-            'bath_min': None,
-            'bath_max': None,
-        }
-    ]
-
-    for attempt in attempts:
-        url = Url(state=attempt['state'],
-                  bed_min=attempt['bed_min'],
-                  bed_max=attempt['bed_max'],
-                  bath_min=attempt['bath_min'],
-                  bath_max=attempt['bath_max'])
-        property_obj = Property(url)
-        try:
-            return property_obj.get_random_property_url()
-        except ValueError:
-            continue
-
-    raise ValueError(
-        "No properties found for your filters or broad state search. Try another state."
+def create_app(config=None):
+    logging.basicConfig(
+        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    app = Flask(__name__)
 
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        log.warning("SECRET_KEY is not set; using a random key, so sessions reset when the server restarts.")
+        secret_key = secrets.token_hex(32)
+    app.config.update(SECRET_KEY=secret_key, FIND_LISTING=find_listing)
+    if config:
+        app.config.update(config)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    games = GameStore()
+    app.extensions["games"] = games
 
+    def current_game():
+        return games.get(session.get("game_id"))
 
-@app.route('/generate', methods=['POST'])
-def generate():
-    # Get form inputs
-    state = request.form.get('state')
-    bed_min = request.form.get('bed_min', type=int)
-    bed_max = request.form.get('bed_max', type=int)
-    bath_min = request.form.get('bath_min', type=int)
-    bath_max = request.form.get('bath_max', type=int)
+    def form_values(criteria):
+        return {k: "" if criteria.get(k) is None else str(criteria[k]) for k in EMPTY_FORM}
 
-    # Store search criteria in session
-    session['search_criteria'] = {
-        'state': state,
-        'bed_min': bed_min,
-        'bed_max': bed_max,
-        'bath_min': bath_min,
-        'bath_max': bath_max
-    }
+    def render_index(values=None, errors=None, error=None, status=200):
+        return render_template(
+            "index.html",
+            states=STATES,
+            rounds_per_game=ROUNDS_PER_GAME,
+            values=values or EMPTY_FORM,
+            errors=errors or {},
+            error=error,
+        ), status
 
-    try:
-        property_url = _get_random_property_url_with_fallback(session['search_criteria'])
-    except ValueError as err:
-        return render_template('index.html', error=str(err))
+    def render_game(game, guess_error=None, status=200):
+        return render_template(
+            "game.html",
+            game=game,
+            round=game.current,
+            rounds_per_game=ROUNDS_PER_GAME,
+            max_points=MAX_POINTS,
+            guess_error=guess_error,
+        ), status
 
-    # Get property information
-    info = Information(property_url)
-    address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
+    @app.route("/")
+    def index():
+        game = current_game()
+        return render_index(values=form_values(game.criteria) if game else None)
 
-    # Store in session
-    session['property_url'] = property_url
-    session['address'] = address
-    session['price'] = price
-    session['beds'] = beds
-    session['baths'] = baths
-    session['sqft'] = sqft
-    session['land_area'] = land_area
-    session['year_built'] = year_built
-    session['image_urls'] = image_urls
-    session['guessed'] = False
+    @app.route("/start", methods=["POST"])
+    def start():
+        criteria, errors = validate_search(request.form)
+        if errors:
+            values = {k: request.form.get(k, "") for k in EMPTY_FORM}
+            return render_index(values=values, errors=errors, status=400)
 
-    return redirect(url_for('game'))
+        old_id = session.pop("game_id", None)
+        if old_id:
+            games.delete(old_id)
 
-
-@app.route('/game')
-def game():
-    if 'address' not in session:
-        return redirect(url_for('index'))
-
-    # Calculate difference if guessed
-    difference = None
-    if session.get('guessed'):
         try:
-            # Extract numeric value from user guess
-            user_guess_str = session.get('user_guess', '').replace('$', '').replace(',', '').strip()
-            user_guess_num = float(user_guess_str)
+            listing = app.config["FIND_LISTING"](criteria)
+        except ScrapeError as err:
+            return render_index(values=form_values(criteria), error=str(err), status=502)
 
-            # Extract numeric value from actual price
-            actual_price_str = session.get('price', '').replace('$', '').replace(',', '').strip()
-            actual_price_num = float(actual_price_str)
+        game_id, game = games.create(criteria)
+        game.add_round(listing)
+        session.clear()
+        session["game_id"] = game_id
+        return redirect(url_for("play"))
 
-            # Calculate difference
-            difference = user_guess_num - actual_price_num
-        except (ValueError, AttributeError):
-            difference = None
+    @app.route("/game")
+    def play():
+        game = current_game()
+        if game is None or game.current is None:
+            return redirect(url_for("index"))
+        return render_game(game)
 
-    return render_template('game.html',
-                           address=session.get('address'),
-                           beds=session.get('beds'),
-                           baths=session.get('baths'),
-                           sqft=session.get('sqft'),
-                           land_area=session.get('land_area'),
-                           year_built=session.get('year_built'),
-                           image_urls=session.get('image_urls'),
-                           guessed=session.get('guessed', False),
-                           price=session.get('price') if session.get('guessed') else None,
-                           user_guess=session.get('user_guess'),
-                           property_url=session.get('property_url'),
-                           difference=difference)
+    @app.route("/guess", methods=["POST"])
+    def guess():
+        game = current_game()
+        if game is None or game.current is None:
+            return redirect(url_for("index"))
+        if game.current.guessed:
+            return redirect(url_for("play"))
 
+        value = parse_guess(request.form.get("guess"))
+        if value is None:
+            return render_game(game, guess_error="Enter a price in dollars, like $450,000 or 450k.", status=400)
+        game.record_guess(value)
+        return redirect(url_for("play"))
 
-@app.route('/guess', methods=['POST'])
-def guess():
-    user_guess = request.form.get('guess')
-    session['user_guess'] = user_guess
-    session['guessed'] = True
-    return redirect(url_for('game'))
+    @app.route("/next", methods=["POST"])
+    def next_round():
+        game = current_game()
+        if game is None or game.current is None:
+            return redirect(url_for("index"))
+        if game.finished:
+            return redirect(url_for("summary"))
+        if not game.current.guessed:
+            return redirect(url_for("play"))
 
+        try:
+            listing = app.config["FIND_LISTING"](game.criteria, exclude=game.seen_urls)
+        except ScrapeError as err:
+            flash(str(err))
+            return redirect(url_for("play"))
+        game.add_round(listing)
+        return redirect(url_for("play"))
 
-@app.route('/generate_again')
-def generate_again():
-    # Use stored search criteria to get another property
-    if 'search_criteria' not in session:
-        return redirect(url_for('index'))
+    @app.route("/summary")
+    def summary():
+        game = current_game()
+        if game is None or not game.finished:
+            return redirect(url_for("play"))
+        return render_template(
+            "summary.html",
+            game=game,
+            rounds_per_game=ROUNDS_PER_GAME,
+            max_total=MAX_POINTS * ROUNDS_PER_GAME,
+        )
 
-    criteria = session['search_criteria']
-    try:
-        property_url = _get_random_property_url_with_fallback(criteria)
-    except ValueError as err:
-        return render_template('index.html', error=str(err))
+    @app.route("/reset", methods=["POST"])
+    def reset():
+        game_id = session.pop("game_id", None)
+        if game_id:
+            games.delete(game_id)
+        session.clear()
+        return redirect(url_for("index"))
 
-    # Get property information
-    info = Information(property_url)
-    address, price, beds, baths, sqft, land_area, year_built, image_urls = info.get_info()
-
-    # Update session with new property
-    session['property_url'] = property_url
-    session['address'] = address
-    session['price'] = price
-    session['beds'] = beds
-    session['baths'] = baths
-    session['sqft'] = sqft
-    session['land_area'] = land_area
-    session['year_built'] = year_built
-    session['image_urls'] = image_urls
-    session['guessed'] = False
-    session.pop('user_guess', None)
-
-    return redirect(url_for('game'))
-
-
-@app.route('/reset')
-def reset():
-    session.clear()
-    return redirect(url_for('index'))
+    return app
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+app = create_app()
+
+if __name__ == "__main__":
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

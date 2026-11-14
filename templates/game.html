@@ -1,302 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guess the Price</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #006AFF;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .address {
-            text-align: center;
-            font-size: 18px;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .property-info {
-            background-color: #f9f9f9;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .info-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        .info-item {
-            flex: 1;
-            min-width: 150px;
-            padding: 10px;
-            background-color: white;
-            border-radius: 4px;
-            border-left: 3px solid #006AFF;
-        }
-        .info-item strong {
-            display: block;
-            color: #006AFF;
-            margin-bottom: 5px;
-        }
-        .images {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .images img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .guess-section {
-            text-align: center;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-        }
-        input[type="text"] {
-            padding: 12px;
-            font-size: 18px;
-            width: 200px;
-            border: 2px solid #006AFF;
-            border-radius: 4px;
-            text-align: center;
-        }
-        button {
-            padding: 12px 30px;
-            background-color: #006AFF;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 10px;
-        }
-        button:hover {
-            background-color: #0056CC;
-        }
-        .full-info-container {
-            margin-top: 30px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        .full-info-toggle {
-            width: 100%;
-            padding: 15px;
-            background-color: #f0f0f0;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            color: #666;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background-color 0.2s;
-        }
-        .full-info-toggle:hover {
-            background-color: #e5e5e5;
-        }
-        .full-info-content {
-            display: none;
-            padding: 15px;
-            font-size: 14px;
-            color: #666;
-            word-break: break-all;
-        }
-        .full-info-content.show {
-            display: block;
-        }
-        .toggle-icon {
-            transition: transform 0.3s;
-        }
-        .toggle-icon.rotate {
-            transform: rotate(180deg);
-        }
-        .result {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #e8f4fd;
-            border-radius: 5px;
-            border-left: 4px solid #006AFF;
-        }
-        .result h2 {
-            color: #006AFF;
-            margin-top: 0;
-        }
-        .price {
-            font-size: 36px;
-            font-weight: bold;
-            color: #00b300;
-            margin: 10px 0;
-        }
-        .difference {
-            font-size: 18px;
-            color: #666;
-        }
-        .reset-btn, .again-btn {
-            display: inline-block;
-            text-decoration: none;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 4px;
-            margin-top: 15px;
-            margin-right: 10px;
-        }
-        .again-btn {
-            background-color: #006AFF;
-        }
-        .again-btn:hover {
-            background-color: #0056CC;
-        }
-        .reset-btn {
-            background-color: #28a745;
-        }
-        .reset-btn:hover {
-            background-color: #218838;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🏠 Guess the Price!</h1>
-        <div class="address">{{ address }}</div>
+{% extends "base.html" %}
+{% block title %}Round {{ game.round_number }} · Price Guesser{% endblock %}
+{% block content %}
+{% set listing = round.listing %}
+<div class="scorebar">
+    <span>Round {{ game.round_number }} of {{ rounds_per_game }}</span>
+    <span>Score {{ "{:,}".format(game.total_score) }}</span>
+</div>
 
-        {% if not guessed %}
-        <div class="guess-section">
-            <h2>What's your guess?</h2>
-            <form action="/guess" method="POST">
-                <input type="text" id="guessInput" name="guess" placeholder="$500,000" required>
-                <button type="submit">Submit Guess</button>
-            </form>
-        </div>
+<h1>Guess the price</h1>
+<p class="address">{{ listing.address }}</p>
+
+{% with messages = get_flashed_messages() %}
+{% for message in messages %}<div class="alert" role="alert">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+{% if not round.guessed %}
+<section class="panel guess-section" aria-labelledby="guess-heading">
+    <h2 id="guess-heading">What's your guess?</h2>
+    <form action="{{ url_for('guess') }}" method="POST" novalidate>
+        <label for="guessInput" class="visually-hidden">Your price guess in dollars</label>
+        <input type="text" id="guessInput" name="guess" inputmode="numeric" autocomplete="off"
+               placeholder="$500,000" required autofocus
+               {% if guess_error %}aria-invalid="true" aria-describedby="guess-error"{% endif %}>
+        <button type="submit" class="btn btn-primary">Submit guess</button>
+        {% if guess_error %}<p class="field-error" id="guess-error">{{ guess_error }}</p>{% endif %}
+    </form>
+</section>
+{% else %}
+<section class="panel result" aria-labelledby="result-heading">
+    <h2 id="result-heading">Results</h2>
+    <p><strong>Your guess:</strong> ${{ "{:,}".format(round.guess) }}</p>
+    <p class="price">Actual price: ${{ "{:,}".format(listing.price) }}</p>
+    <p class="difference">
+        {% if round.difference > 0 %}
+        You guessed <strong class="too-high">${{ "{:,}".format(round.difference) }}</strong> too high
+        ({{ "%.1f"|format(round.percent_off) }}% off).
+        {% elif round.difference < 0 %}
+        You guessed <strong class="too-low">${{ "{:,}".format(-round.difference) }}</strong> too low
+        ({{ "%.1f"|format(round.percent_off) }}% off).
         {% else %}
-        <div class="result">
-            <h2>Results</h2>
-            <p><strong>Your Guess:</strong> {{ user_guess }}</p>
-            <div class="price">Actual Price: {{ price }}</div>
-            {% if difference is not none %}
-            <div class="difference">
-                {% if difference > 0 %}
-                You guessed <strong style="color: #dc3545;">${{ "{:,.0f}".format(difference) }}</strong> too high
-                {% elif difference < 0 %}
-                You guessed <strong style="color: #007bff;">${{ "{:,.0f}".format(-difference) }}</strong> too low
-                {% else %}
-                <strong style="color: #28a745;">Perfect guess! 🎯</strong>
-                {% endif %}
-            </div>
-            {% endif %}
-            <a href="/generate_again" class="again-btn">Try Another Property (Same Criteria)</a>
-            <a href="/reset" class="reset-btn">New Search</a>
-        </div>
+        <strong class="perfect">Perfect guess! 🎯</strong>
         {% endif %}
-        
-        <div class="property-info">
-            <div class="info-row">
-                <div class="info-item">
-                    <strong>🛏️ Bedrooms</strong>
-                    {{ beds }}
-                </div>
-                <div class="info-item">
-                    <strong>🚿 Bathrooms</strong>
-                    {{ baths }}
-                </div>
-                <div class="info-item">
-                    <strong>📐 Square Feet</strong>
-                    {{ sqft }}
-                </div>
-            </div>
-            <div class="info-row">
-                <div class="info-item">
-                    <strong>🌳 Land Area</strong>
-                    {{ land_area }}
-                </div>
-                <div class="info-item">
-                    <strong>📅 Year Built</strong>
-                    {{ year_built }}
-                </div>
-            </div>
-        </div>
-        
-        <div class="images">
-            {% for img_url in image_urls %}
-            <img src="{{ img_url }}" alt="Property image">
-            {% endfor %}
-        </div>
-        
-        {% if guessed %}
-        <div class="full-info-container">
-            <button class="full-info-toggle" onclick="toggleFullInfo()">
-                <span>Full Information</span>
-                <span class="toggle-icon" id="toggleIcon">▼</span>
-            </button>
-            <div class="full-info-content" id="fullInfoContent">
-                <a href="{{ property_url }}" target="_blank" style="color: #006AFF;">{{ property_url }}</a>
-            </div>
-        </div>
+    </p>
+    <p class="points"><strong>+{{ "{:,}".format(round.points) }}</strong> of {{ "{:,}".format(max_points) }} points</p>
+    <div class="actions">
+        {% if game.finished %}
+        <a href="{{ url_for('summary') }}" class="btn btn-primary">See final score</a>
+        {% else %}
+        <form action="{{ url_for('next_round') }}" method="POST">
+            <button type="submit" class="btn btn-primary">Next property</button>
+        </form>
         {% endif %}
+        <form action="{{ url_for('reset') }}" method="POST">
+            <button type="submit" class="btn btn-secondary">New search</button>
+        </form>
     </div>
-    
-    <script>
-        // Toggle full info section
-        function toggleFullInfo() {
-            const content = document.getElementById('fullInfoContent');
-            const icon = document.getElementById('toggleIcon');
-            content.classList.toggle('show');
-            icon.classList.toggle('rotate');
-        }
-        
-        // Format number with commas while typing
-        const guessInput = document.getElementById('guessInput');
-        if (guessInput) {
-            guessInput.addEventListener('input', function(e) {
-                let value = e.target.value;
-                
-                // Remove all non-digit characters
-                let numbers = value.replace(/\D/g, '');
-                
-                // Format with commas
-                if (numbers) {
-                    let formatted = parseInt(numbers).toLocaleString('en-US');
-                    e.target.value = '$' + formatted;
-                } else {
-                    e.target.value = '';
-                }
-            });
-            
-            // Handle backspace/delete to ensure smooth editing
-            guessInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' || e.key === 'Delete') {
-                    let value = e.target.value;
-                    if (value === '$') {
-                        e.target.value = '';
-                        e.preventDefault();
-                    }
-                }
-            });
-        }
-    </script>
-</body>
-</html>
+    <p class="listing-link"><a href="{{ listing.url }}" target="_blank" rel="noopener">View this listing on Zillow</a></p>
+</section>
+{% endif %}
+
+<section class="panel property-info" aria-label="Property details">
+    <dl class="facts">
+        <div><dt>🛏️ Bedrooms</dt><dd>{{ listing.beds }}</dd></div>
+        <div><dt>🚿 Bathrooms</dt><dd>{{ listing.baths }}</dd></div>
+        <div><dt>📐 Square feet</dt><dd>{{ listing.sqft }}</dd></div>
+        <div><dt>🌳 Land area</dt><dd>{{ listing.land_area }}</dd></div>
+        <div><dt>📅 Year built</dt><dd>{{ listing.year_built }}</dd></div>
+    </dl>
+</section>
+
+{% if listing.image_urls %}
+{% set total = listing.image_urls|length %}
+<section class="carousel" aria-roledescription="carousel" aria-label="Listing photos" data-carousel>
+    <div class="carousel-track">
+        {% for img_url in listing.image_urls %}
+        <figure class="slide" aria-roledescription="slide" aria-label="{{ loop.index }} of {{ total }}">
+            <img src="{{ img_url }}" alt="Photo {{ loop.index }} of {{ total }} of {{ listing.address }}"
+                 loading="{{ 'eager' if loop.first else 'lazy' }}">
+        </figure>
+        {% endfor %}
+    </div>
+    <div class="carousel-controls" hidden>
+        <button type="button" class="btn btn-secondary" data-prev aria-label="Previous photo">‹ Prev</button>
+        <span class="carousel-count" aria-live="polite" data-count>1 / {{ total }}</span>
+        <button type="button" class="btn btn-secondary" data-next aria-label="Next photo">Next ›</button>
+    </div>
+</section>
+{% else %}
+<p class="muted">No photos for this listing.</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+{% endblock %}
