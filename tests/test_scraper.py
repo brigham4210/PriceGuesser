@@ -3,14 +3,12 @@ import random
 import pytest
 import requests
 
-from Zillow import BlockedError, NoListingsError, ScrapeError, UnusableListing
-from Zillow import client, search
+from conftest import fixture_html
+from Zillow import BlockedError, NoListingsError, ScrapeError, UnusableListing, client, search
 from Zillow.cache import TTLCache
 from Zillow.information import fetch_listing, parse_listing
 from Zillow.listing import Listing
 from Zillow.property import fetch_property_urls, parse_property_urls
-
-from conftest import fixture_html
 
 H = "0123456789abcdef0123456789abcdef"
 H2 = "fedcba9876543210fedcba9876543210"
@@ -88,7 +86,9 @@ class TestFetchListing:
             calls.append(url)
             return fixture_html("search_cards.html")
 
-        assert fetch_property_urls("https://z/s", fetcher=fetcher) == fetch_property_urls("https://z/s", fetcher=fetcher)
+        assert fetch_property_urls("https://z/s", fetcher=fetcher) == fetch_property_urls(
+            "https://z/s", fetcher=fetcher
+        )
         assert calls == ["https://z/s"]
 
 

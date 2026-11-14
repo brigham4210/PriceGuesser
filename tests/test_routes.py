@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 
-from game import GameStore, ROUNDS_PER_GAME
+from game import ROUNDS_PER_GAME, GameStore
 from main import create_app
 from Zillow import BlockedError, NoListingsError
 from Zillow.listing import Listing
@@ -27,7 +27,10 @@ class FakeFinder:
             price=PRICE,
             price_text=f"${PRICE:,}",
             beds="3 beds",
-            image_urls=("https://photos.zillowstatic.com/fp/a-cc_ft_1536.jpg", "https://photos.zillowstatic.com/fp/b-cc_ft_1536.jpg"),
+            image_urls=(
+                "https://photos.zillowstatic.com/fp/a-cc_ft_1536.jpg",
+                "https://photos.zillowstatic.com/fp/b-cc_ft_1536.jpg",
+            ),
         )
 
 

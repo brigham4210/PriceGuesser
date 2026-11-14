@@ -1,4 +1,5 @@
 """A small thread-safe in-memory cache with per-entry expiry."""
+
 import threading
 import time
 from collections import OrderedDict

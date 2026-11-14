@@ -1,18 +1,59 @@
 """Validation for the search form and price guesses."""
+
 import re
 
 STATES = {
-    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
-    "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "DC": "District of Columbia",
-    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
-    "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana",
-    "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
-    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
-    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
-    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon",
-    "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota",
-    "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia",
-    "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "DC": "District of Columbia",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming",
 }
 
 MAX_ROOMS = 20
@@ -38,7 +79,7 @@ def _number(raw, label, errors, key, integer):
             errors[key] = f"{label} must be a whole number."
             return None
         return int(value)
-    if (value * 2) != int(value * 2):
+    if not (value * 2).is_integer():
         errors[key] = f"{label} must be a whole or half number, like 2 or 2.5."
         return None
     return int(value) if value.is_integer() else value

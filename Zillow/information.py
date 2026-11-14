@@ -1,4 +1,5 @@
 """Read one Zillow listing page into a Listing."""
+
 import logging
 import re
 
@@ -59,7 +60,8 @@ def _bed_bath_sqft(soup):
         values = soup.find_all("span", {"data-testid": "bed-bath-sqft-text__value"})
         labels = soup.find_all("span", {"data-testid": "bed-bath-sqft-text__description"})
         if len(values) >= 3 and len(labels) >= 3:
-            beds, baths, sqft = (f"{v.get_text(strip=True)} {d.get_text(strip=True)}" for v, d in zip(values[:3], labels[:3]))
+            pairs = zip(values[:3], labels[:3], strict=True)
+            beds, baths, sqft = (f"{_text(v)} {_text(d)}" for v, d in pairs)
     return beds, baths, sqft
 
 

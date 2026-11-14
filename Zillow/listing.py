@@ -1,4 +1,5 @@
 """The Listing record and price parsing."""
+
 from __future__ import annotations
 
 import re

@@ -167,6 +167,3 @@ input, select {
     body { padding: 10px; }
     .container { padding: 18px; }
 }
-@media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; }
-}

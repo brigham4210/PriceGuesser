@@ -1,4 +1,5 @@
 """Build Zillow search URLs."""
+
 import json
 from urllib.parse import quote
 

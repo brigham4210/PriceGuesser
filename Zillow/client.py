@@ -1,4 +1,5 @@
 """HTTP access to Zillow with timeouts, limited retries and block detection."""
+
 import logging
 import re
 import time
@@ -22,10 +23,7 @@ RETRY_DELAY_SECONDS = 0.5
 _BLOCK_MARKERS = ("px-captcha", "press &amp; hold", "press & hold")
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 
-BLOCKED_MESSAGE = (
-    "Zillow is blocking requests from this server right now. "
-    "Wait a few minutes and try again."
-)
+BLOCKED_MESSAGE = "Zillow is blocking requests from this server right now. Wait a few minutes and try again."
 UNREACHABLE_MESSAGE = "Couldn't reach Zillow. Check your connection and try again."
 
 _session = requests.Session()

@@ -66,7 +66,9 @@ class TestParseGuess:
 
 class TestValidateSearch:
     def test_valid_with_ranges(self):
-        criteria, errors = validate_search({"state": "ca", "bed_min": "2", "bed_max": "3", "bath_min": "1.5", "bath_max": ""})
+        criteria, errors = validate_search(
+            {"state": "ca", "bed_min": "2", "bed_max": "3", "bath_min": "1.5", "bath_max": ""}
+        )
         assert errors == {}
         assert criteria == {"state": "CA", "bed_min": 2, "bed_max": 3, "bath_min": 1.5, "bath_max": None}
 
@@ -78,7 +80,10 @@ class TestValidateSearch:
         _, errors = validate_search({"state": "TX", "bed_min": "4", "bed_max": "2", "bath_min": "3", "bath_max": "1"})
         assert set(errors) == {"bed_max", "bath_max"}
 
-    @pytest.mark.parametrize("field, value", [("bed_min", "2.5"), ("bed_min", "-1"), ("bath_max", "1.3"), ("bed_max", "lots"), ("bed_max", "50")])
+    @pytest.mark.parametrize(
+        "field, value",
+        [("bed_min", "2.5"), ("bed_min", "-1"), ("bath_max", "1.3"), ("bed_max", "lots"), ("bed_max", "50")],
+    )
     def test_bad_numbers(self, field, value):
         _, errors = validate_search({"state": "TX", field: value})
         assert field in errors

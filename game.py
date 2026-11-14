@@ -1,4 +1,5 @@
 """Game state, scoring, and the server-side store that keeps answers out of cookies."""
+
 from __future__ import annotations
 
 import math

@@ -1,10 +1,11 @@
 """Pick a random playable listing for a set of search criteria."""
+
 import logging
 import random
 
 from Zillow import NoListingsError, UnusableListing
-from Zillow.information import fetch_listing
-from Zillow.property import fetch_property_urls
+from Zillow.information import LISTING_CACHE, fetch_listing
+from Zillow.property import SEARCH_CACHE, fetch_property_urls
 from Zillow.url import Url
 
 log = logging.getLogger(__name__)
@@ -44,8 +45,5 @@ def find_listing(criteria, exclude=(), rng=random):
 
 
 def clear_caches():
-    from Zillow.information import LISTING_CACHE
-    from Zillow.property import SEARCH_CACHE
-
     LISTING_CACHE.clear()
     SEARCH_CACHE.clear()

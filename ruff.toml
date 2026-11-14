@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "B", "I", "UP", "SIM", "RUF"]
+
+[lint.isort]
+known-first-party = ["Zillow", "forms", "game", "main", "conftest"]

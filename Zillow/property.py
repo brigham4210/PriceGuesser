@@ -1,4 +1,5 @@
 """Read listing links from a Zillow search results page."""
+
 import logging
 import re
 from urllib.parse import urljoin
