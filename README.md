@@ -142,4 +142,4 @@ Tests never call Zillow. Scraper tests use small HTML fixtures in `tests/fixture
 
 ## 📄 License
 
-[Add your license here]
+Released under the [MIT License](LICENSE).
