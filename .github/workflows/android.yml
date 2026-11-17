@@ -87,7 +87,10 @@ jobs:
             grep -q "Price Guesser" home.html
             curl -sf http://127.0.0.1:8765/static/css/style.css -o /dev/null
             adb shell pidof com.brigham4210.priceguesser
+            sleep 10
             adb exec-out screencap -p > screenshot.png
+            adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ui.xml
+            grep -q "Start game" ui.xml
             adb logcat -d -s python.stdout python.stderr PriceGuesser > logcat.txt || true
       - uses: actions/upload-artifact@v7
         if: always()
@@ -97,6 +100,7 @@ jobs:
             screenshot.png
             logcat.txt
             home.html
+            ui.xml
           if-no-files-found: ignore
 
   release:
