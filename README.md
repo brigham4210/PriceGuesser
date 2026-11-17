@@ -8,13 +8,13 @@ PriceGuesser is a Flask web application that scrapes live Zillow listings and pr
 
 ## 📱 Android App
 
-Download `PriceGuesser-<version>.apk` from the [latest release](https://github.com/brigham4210/PriceGuesser/releases/latest), open it on your phone and allow installs from your browser or file manager if Android asks. Requires Android 7.0 or newer on a 64-bit device.
+Download `PriceGuesser-<version>.apk` from the latest **Android** release on the [releases page](https://github.com/brigham4210/PriceGuesser/releases), open it on your phone and allow installs from your browser or file manager if Android asks. Requires Android 7.0 or newer on a 64-bit device.
 
 The app runs the same Flask game on the phone itself, using [Chaquopy](https://chaquo.com/chaquopy/) for Python, and shows it in a WebView. Nothing is hosted: the phone requests Zillow directly, and Zillow links open in your browser.
 
 ## 🍎 iOS App (sideload)
 
-Each release also has an unsigned `PriceGuesser-<version>.ipa` for personal use. iPhones only run signed apps, so you sign it with your own free Apple ID using a sideloading tool on a Windows PC or Mac:
+Each **iOS** release on the [releases page](https://github.com/brigham4210/PriceGuesser/releases) has an unsigned `PriceGuesser-<version>.ipa` for personal use. iPhones only run signed apps, so you sign it with your own free Apple ID using a sideloading tool on a Windows PC or Mac:
 
 1. Install [Sideloadly](https://sideloadly.io/) or [AltStore](https://altstore.io/) on your computer.
 2. Connect your iPhone, open the `.ipa` in the tool and sign in with your Apple ID.
@@ -176,7 +176,7 @@ That runs the app in the iOS simulator. CI builds the unsigned `.ipa` with `xcod
 
 ### Releases
 
-GitHub Actions builds the APK and IPA on every push, launches each in an emulator or simulator to check that the game loads, and attaches both to a GitHub release when you push a `v*` tag:
+Two GitHub Actions workflows, **Android** and **iOS**, build the APK and IPA on every push and launch each in an emulator or simulator to check that the game loads. Pushing a `v*` tag publishes two releases from that commit: **Android v1.2.0** (tag `android-v1.2.0`, the APK) and **iOS v1.2.0** (tag `ios-v1.2.0`, the IPA):
 
 ```bash
 git tag v1.2.0 && git push origin v1.2.0
