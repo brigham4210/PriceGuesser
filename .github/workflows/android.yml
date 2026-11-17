@@ -89,9 +89,8 @@ jobs:
             adb shell pidof com.brigham4210.priceguesser
             sleep 10
             adb exec-out screencap -p > screenshot.png
-            adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ui.xml
-            grep -q "Start game" ui.xml
-            adb logcat -d -s python.stdout python.stderr PriceGuesser > logcat.txt || true
+            adb logcat -d -s python.stdout python.stderr PriceGuesser > logcat.txt
+            grep -q "GET /static/favicon.svg" logcat.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -100,7 +99,6 @@ jobs:
             screenshot.png
             logcat.txt
             home.html
-            ui.xml
           if-no-files-found: ignore
 
   release:
