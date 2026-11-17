@@ -165,14 +165,16 @@ jobs:
             ios-home.html
           if-no-files-found: ignore
 
-      # Unsigned: sideloading tools (AltStore, Sideloadly) sign it with your Apple ID.
+      # Unsigned app: sideloading tools (AltStore, Sideloadly) sign it with your Apple ID.
+      # Briefcase's build phase still signs the Python frameworks, so give it an ad-hoc identity.
       - name: Build the unsigned IPA
         working-directory: ios
         run: |
           project=$(find build -maxdepth 5 -name "*.xcodeproj" | head -1)
           xcodebuild build -project "$project" -configuration Release \
             -sdk iphoneos -destination generic/platform=iOS \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -quiet
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            EXPANDED_CODE_SIGN_IDENTITY=- -quiet
           app=$(find build -maxdepth 6 -type d -path "*Release-iphoneos/*.app" | head -1)
           echo "Packaging $app"
           rm -rf Payload && mkdir Payload && cp -R "$app" Payload/
