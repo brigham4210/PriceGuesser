@@ -4,7 +4,8 @@ project_name = "PriceGuesser"
 bundle = "io.github.brigham4210"
 version = "1.2.0"  # CI sets this from the release tag
 url = "https://github.com/brigham4210/PriceGuesser"
-license.file = "LICENSE"
+license = "MIT"
+license-files = ["LICENSE"]
 author = "brigham4210"
 
 [tool.briefcase.app.priceguesser]
@@ -22,7 +23,7 @@ requires = [
 [tool.briefcase.app.priceguesser.iOS]
 requires = [
     "toga-iOS==0.5.7",
-    "std-nslog~=2.0",
+    "std-nslog~=1.0.3",
 ]
 splash_background_color = "#0B5FFF"
 # The game runs on http://127.0.0.1 inside the app.
