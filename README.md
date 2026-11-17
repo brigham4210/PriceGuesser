@@ -6,6 +6,12 @@ An interactive web game where you guess the prices of real Zillow listings. Each
 
 PriceGuesser is a Flask web application that scrapes live Zillow listings and presents them for price guessing. Players pick a state and optional bedroom/bathroom ranges, then guess each property's price. After each guess the app reveals the actual price, how far off you were, and your points for the round.
 
+## 📱 Android App
+
+Download `PriceGuesser-<version>.apk` from the [latest release](https://github.com/brigham4210/PriceGuesser/releases/latest), open it on your phone and allow installs from your browser or file manager if Android asks. Requires Android 7.0 or newer on a 64-bit device.
+
+The app runs the same Flask game on the phone itself, using [Chaquopy](https://chaquo.com/chaquopy/) for Python, and shows it in a WebView. Nothing is hosted: the phone requests Zillow directly, and Zillow links open in your browser.
+
 ## 🎮 How It Works
 
 1. **Pick a state** - Choose a state and, optionally, bedroom and bathroom ranges
@@ -40,6 +46,7 @@ Points depend on how far off you were as a percentage of the price, so $50k off 
 - **Backend**: Flask
 - **Web scraping**: BeautifulSoup, Requests
 - **Frontend**: HTML, CSS, a little JavaScript
+- **Android**: Java WebView shell, Chaquopy (Python 3.12 on Android)
 - **Tests**: pytest, run on GitHub Actions
 
 ## 📁 Project Structure
@@ -69,7 +76,11 @@ PriceGuesser/
 │   ├── information.py      # Listing details from a listing page
 │   ├── listing.py          # Listing record and price parsing
 │   └── search.py           # Pick a random playable listing
-└── tests/                  # pytest suite with saved HTML fixtures
+├── tests/                  # pytest suite with saved HTML fixtures
+└── android/                # Android app (Gradle project)
+    └── app/src/main/
+        ├── java/.../MainActivity.java   # WebView, starts the server
+        └── python/android_server.py     # Runs the Flask app on 127.0.0.1
 ```
 
 ## 🚀 Getting Started
@@ -121,6 +132,24 @@ pytest
 ```
 
 Tests never call Zillow. Scraper tests use small HTML fixtures in `tests/fixtures/` that mirror the parts of Zillow's markup the parser reads.
+
+### Building the Android app
+
+The Gradle build copies `main.py`, `game.py`, `forms.py`, `Zillow/`, `templates/` and `static/` into the app, so the app always matches the web version. You need JDK 17, the Android SDK, Python 3.12 (Chaquopy uses it at build time) and Gradle 8.14, or open `android/` in Android Studio.
+
+```bash
+gradle -p android assembleDebug
+```
+
+The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+GitHub Actions builds the APK on every push, launches it on an emulator to check that the game loads, and attaches it to a GitHub release when you push a `v*` tag:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+Releases are signed with a release key when the repository has the secrets `ANDROID_KEYSTORE_BASE64` (a base64 PKCS12 keystore), `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. Without them, CI builds a debug-signed APK. Each debug build has a different key, so updating means uninstalling first.
 
 ## 🌐 Routes
 
