@@ -152,8 +152,8 @@ jobs:
           xcrun simctl io "$udid" screenshot ../ios-screenshot.png
           xcrun simctl spawn "$udid" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "HTTP/1.1"' > ../ios-log.txt || true
-          # Only the web view requests the favicon, so this shows the page loaded in the app.
-          grep -q "GET /static/favicon.svg" ../ios-log.txt
+          # This script never fetches the stylesheet, so its request shows the page loaded in the app.
+          grep -q "GET /static/css/style.css" ../ios-log.txt
 
       - uses: actions/upload-artifact@v7
         if: always()
