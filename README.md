@@ -12,6 +12,18 @@ Download `PriceGuesser-<version>.apk` from the [latest release](https://github.c
 
 The app runs the same Flask game on the phone itself, using [Chaquopy](https://chaquo.com/chaquopy/) for Python, and shows it in a WebView. Nothing is hosted: the phone requests Zillow directly, and Zillow links open in your browser.
 
+## 🍎 iOS App (sideload)
+
+Each release also has an unsigned `PriceGuesser-<version>.ipa` for personal use. iPhones only run signed apps, so you sign it with your own free Apple ID using a sideloading tool on a Windows PC or Mac:
+
+1. Install [Sideloadly](https://sideloadly.io/) or [AltStore](https://altstore.io/) on your computer.
+2. Connect your iPhone, open the `.ipa` in the tool and sign in with your Apple ID.
+3. On the iPhone, open **Settings → General → VPN & Device Management**, trust your Apple ID, and turn on **Developer Mode** (Settings → Privacy & Security) if iOS asks.
+
+With a free Apple ID the app stops opening after 7 days until you sideload it again. AltStore can refresh it automatically over Wi-Fi.
+
+The iOS app is built with [Briefcase](https://briefcase.beeware.org/) and [Toga](https://toga.beeware.org/). Like the Android app, it runs the same Flask game on the phone and shows it in a web view.
+
 ## 🎮 How It Works
 
 1. **Pick a state** - Choose a state and, optionally, bedroom and bathroom ranges
@@ -47,6 +59,7 @@ Points depend on how far off you were as a percentage of the price, so $50k off 
 - **Web scraping**: BeautifulSoup, Requests
 - **Frontend**: HTML, CSS, a little JavaScript
 - **Android**: Java WebView shell, Chaquopy (Python 3.12 on Android)
+- **iOS**: Briefcase and Toga (Python 3.13 on iOS)
 - **Tests**: pytest, run on GitHub Actions
 
 ## 📁 Project Structure
@@ -77,10 +90,14 @@ PriceGuesser/
 │   ├── listing.py          # Listing record and price parsing
 │   └── search.py           # Pick a random playable listing
 ├── tests/                  # pytest suite with saved HTML fixtures
-└── android/                # Android app (Gradle project)
-    └── app/src/main/
-        ├── java/.../MainActivity.java   # WebView, starts the server
-        └── python/android_server.py     # Runs the Flask app on 127.0.0.1
+├── android/                # Android app (Gradle project)
+│   └── app/src/main/
+│       ├── java/.../MainActivity.java   # WebView, starts the server
+│       └── python/android_server.py     # Runs the Flask app on 127.0.0.1
+└── ios/                    # iOS app (Briefcase project)
+    ├── pyproject.toml      # Briefcase config
+    ├── sync_webapp.sh      # Copies the Flask game into src/pgweb
+    └── src/priceguesser/app.py          # Toga web view, starts the server
 ```
 
 ## 🚀 Getting Started
@@ -143,10 +160,26 @@ gradle -p android assembleDebug
 
 The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-GitHub Actions builds the APK on every push, launches it on an emulator to check that the game loads, and attaches it to a GitHub release when you push a `v*` tag:
+### Building the iOS app
+
+This needs a Mac with Xcode and Python 3.13:
 
 ```bash
-git tag v1.0.0 && git push origin v1.0.0
+pip install briefcase==0.4.7
+```
+
+```bash
+cd ios && ./sync_webapp.sh && briefcase run iOS
+```
+
+That runs the app in the iOS simulator. CI builds the unsigned `.ipa` with `xcodebuild` for `iphoneos` with code signing turned off.
+
+### Releases
+
+GitHub Actions builds the APK and IPA on every push, launches each in an emulator or simulator to check that the game loads, and attaches both to a GitHub release when you push a `v*` tag:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
 ```
 
 Releases are signed with a release key when the repository has the secrets `ANDROID_KEYSTORE_BASE64` (a base64 PKCS12 keystore), `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. Without them, CI builds a debug-signed APK. Each debug build has a different key, so updating means uninstalling first.

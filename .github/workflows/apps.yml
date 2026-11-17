@@ -1,0 +1,214 @@
+name: Apps
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_VERSION: "8.14.3"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      # Chaquopy needs a build-machine Python matching the app's Python (3.12).
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Set up signing key
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        env:
+          APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          [ -n "$APP_VERSION" ] || unset APP_VERSION
+          if [ -n "${ANDROID_KEYSTORE_PATH:-}" ]; then
+            gradle -p android assembleRelease
+            cp android/app/build/outputs/apk/release/app-release.apk PriceGuesser.apk
+          else
+            echo "No signing key available; building a debug APK."
+            gradle -p android assembleDebug
+            cp android/app/build/outputs/apk/debug/app-debug.apk PriceGuesser.apk
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PriceGuesser-apk
+          path: PriceGuesser.apk
+          if-no-files-found: error
+
+  android-smoke-test:
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: PriceGuesser-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch the app and load the home page
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r PriceGuesser.apk
+            adb shell am start -W -n com.brigham4210.priceguesser/.MainActivity
+            adb forward tcp:8765 tcp:8765
+            for i in $(seq 1 60); do curl -sf http://127.0.0.1:8765/ -o home.html && break; sleep 2; done
+            grep -q "Price Guesser" home.html
+            curl -sf http://127.0.0.1:8765/static/css/style.css -o /dev/null
+            adb shell pidof com.brigham4210.priceguesser
+            sleep 10
+            adb exec-out screencap -p > screenshot.png
+            adb logcat -d -s python.stdout python.stderr PriceGuesser > logcat.txt
+            grep -q "GET /static/favicon.svg" logcat.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: android-smoke-test-output
+          path: |
+            screenshot.png
+            logcat.txt
+            home.html
+          if-no-files-found: ignore
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Briefcase builds the app for the Python running it; MarkupSafe has iOS wheels for 3.13.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Briefcase
+        run: python -m pip install briefcase==0.4.7
+
+      - name: Prepare app sources
+        env:
+          APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+        run: |
+          ios/sync_webapp.sh
+          if [ -n "$APP_VERSION" ]; then
+            sed -i '' -E "s/^version = \"[^\"]*\"/version = \"${APP_VERSION#v}\"/" ios/pyproject.toml
+          fi
+          grep '^version' ios/pyproject.toml
+
+      - name: Create the Xcode project
+        working-directory: ios
+        run: briefcase create iOS --no-input
+
+      - name: Build for the simulator
+        working-directory: ios
+        run: briefcase build iOS --no-input
+
+      - name: Launch in the simulator and load the home page
+        working-directory: ios
+        run: |
+          app=$(find build -maxdepth 6 -type d -path "*Debug-iphonesimulator/*.app" | head -1)
+          bundle_id=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$app/Info.plist")
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted((k for k in devices if "iOS" in k), reverse=True)
+          print(next(d["udid"] for k in runtimes for d in devices[k] if d["name"].startswith("iPhone")))
+          ')
+          echo "App: $app ($bundle_id), simulator: $udid"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl launch "$udid" "$bundle_id"
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8765/ -o ../ios-home.html && break; sleep 2; done
+          grep -q "Price Guesser" ../ios-home.html
+          sleep 15
+          xcrun simctl io "$udid" screenshot ../ios-screenshot.png
+          xcrun simctl spawn "$udid" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "HTTP/1.1"' > ../ios-log.txt || true
+          # Only the web view requests the favicon, so this shows the page loaded in the app.
+          grep -q "GET /static/favicon.svg" ../ios-log.txt
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ios-smoke-test-output
+          path: |
+            ios-screenshot.png
+            ios-log.txt
+            ios-home.html
+          if-no-files-found: ignore
+
+      # Unsigned: sideloading tools (AltStore, Sideloadly) sign it with your Apple ID.
+      - name: Build the unsigned IPA
+        working-directory: ios
+        run: |
+          project=$(find build -maxdepth 5 -name "*.xcodeproj" | head -1)
+          xcodebuild build -project "$project" -configuration Release \
+            -sdk iphoneos -destination generic/platform=iOS \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -quiet
+          app=$(find build -maxdepth 6 -type d -path "*Release-iphoneos/*.app" | head -1)
+          echo "Packaging $app"
+          rm -rf Payload && mkdir Payload && cp -R "$app" Payload/
+          zip -qry ../PriceGuesser.ipa Payload
+          ls -l ../PriceGuesser.ipa
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PriceGuesser-ipa
+          path: PriceGuesser.ipa
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, android-smoke-test, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: PriceGuesser-apk
+      - uses: actions/download-artifact@v8
+        with:
+          name: PriceGuesser-ipa
+      - name: Publish the APK and IPA to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mv PriceGuesser.apk "PriceGuesser-${TAG}.apk"
+          mv PriceGuesser.ipa "PriceGuesser-${TAG}.ipa"
+          files=("PriceGuesser-${TAG}.apk" "PriceGuesser-${TAG}.ipa")
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" \
+              --title "PriceGuesser ${TAG}" --generate-notes
+          fi
