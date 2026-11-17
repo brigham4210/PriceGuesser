@@ -72,6 +72,9 @@
 {% if listing.image_urls %}
 {% set total = listing.image_urls|length %}
 <section class="carousel" aria-roledescription="carousel" aria-label="Listing photos" data-carousel>
+    <div class="carousel-view" hidden>
+        <button type="button" class="btn btn-secondary btn-small" data-view-toggle aria-pressed="false">Show all {{ total }} photos</button>
+    </div>
     <div class="carousel-track">
         {% for img_url in listing.image_urls %}
         <figure class="slide" aria-roledescription="slide" aria-label="{{ loop.index }} of {{ total }}">

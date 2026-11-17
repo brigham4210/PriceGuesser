@@ -152,6 +152,10 @@ input, select {
 .carousel.is-enhanced .slide.is-active { display: block; }
 .carousel.is-enhanced .slide img { height: auto; max-height: 520px; aspect-ratio: 4 / 3; background: var(--panel); }
 .carousel-controls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px; }
+.carousel-view { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.carousel-view[hidden] { display: none; }
+.btn-small { padding: 8px 14px; font-size: 14px; }
+.carousel.is-grid .slide img { cursor: zoom-in; }
 .carousel-count { min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* Summary */
@@ -166,4 +170,7 @@ input, select {
 @media (max-width: 480px) {
     body { padding: 10px; }
     .container { padding: 18px; }
+    /* Two photos per row on phones so "show all" stays easy to scan. */
+    .carousel-track { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .slide img { height: 120px; }
 }

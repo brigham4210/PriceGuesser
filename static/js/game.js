@@ -12,30 +12,59 @@
         });
     }
 
-    // Photo carousel: one photo at a time, buttons plus left/right arrow keys.
+    // Photos: one at a time (buttons plus left/right arrow keys) or all at once in a grid.
+    // Tapping a photo in the grid opens it in the one-at-a-time view. The choice is remembered.
+    var VIEW_KEY = 'priceguesser.photoView';
     var carousel = document.querySelector('[data-carousel]');
     if (carousel) {
         var slides = carousel.querySelectorAll('.slide');
         var controls = carousel.querySelector('.carousel-controls');
         var count = carousel.querySelector('[data-count]');
+        var viewBar = carousel.querySelector('.carousel-view');
+        var toggle = carousel.querySelector('[data-view-toggle]');
         var index = 0;
+        var grid = false;
         if (slides.length > 1) {
-            carousel.classList.add('is-enhanced');
-            controls.hidden = false;
-            carousel.tabIndex = 0;
             var show = function (i) {
                 index = (i + slides.length) % slides.length;
                 slides.forEach(function (s, n) { s.classList.toggle('is-active', n === index); });
                 count.textContent = (index + 1) + ' / ' + slides.length;
             };
+            var setGrid = function (on, remember) {
+                grid = on;
+                carousel.classList.toggle('is-enhanced', !on);
+                carousel.classList.toggle('is-grid', on);
+                controls.hidden = on;
+                toggle.setAttribute('aria-pressed', String(on));
+                toggle.textContent = on ? 'View one at a time' : 'Show all ' + slides.length + ' photos';
+                if (remember) {
+                    try { localStorage.setItem(VIEW_KEY, on ? 'grid' : 'single'); } catch (e) { /* storage blocked */ }
+                }
+            };
+
+            carousel.tabIndex = 0;
+            viewBar.hidden = false;
+            toggle.addEventListener('click', function () { setGrid(!grid, true); });
             carousel.querySelector('[data-prev]').addEventListener('click', function () { show(index - 1); });
             carousel.querySelector('[data-next]').addEventListener('click', function () { show(index + 1); });
             carousel.addEventListener('keydown', function (e) {
-                if (e.target.tagName === 'INPUT') return;
+                if (grid || e.target.tagName === 'INPUT') return;
                 if (e.key === 'ArrowLeft') { e.preventDefault(); show(index - 1); }
                 if (e.key === 'ArrowRight') { e.preventDefault(); show(index + 1); }
             });
+            slides.forEach(function (s, n) {
+                s.addEventListener('click', function () {
+                    if (!grid) return;
+                    setGrid(false, true);
+                    show(n);
+                    carousel.scrollIntoView({ block: 'start' });
+                });
+            });
+
+            var saved = null;
+            try { saved = localStorage.getItem(VIEW_KEY); } catch (e) { /* storage blocked */ }
             show(0);
+            setGrid(saved === 'grid', false);
         }
     }
 
